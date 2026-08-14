@@ -70,3 +70,22 @@ export const memberBottomBarNav: NavItem[] = [
   { label: "Updates", href: ROUTES.PORTAL_UPDATES, icon: MessageSquare },
   { label: "Profile", href: ROUTES.PORTAL_PROFILE, icon: User },
 ];
+
+// Extra portal modules unlocked for Secretary/Treasurer on top of the
+// ordinary member nav — see convex/authz.ts requireSecretary/requireTreasurer.
+export function committeeNavItems(
+  committeeRole: "chairman" | "deputy_chairman" | "secretary" | "treasurer" | undefined
+): NavItem[] {
+  const items: NavItem[] = [];
+  if (committeeRole === "secretary") {
+    items.push({ label: "Announcements", href: ROUTES.PORTAL_ANNOUNCEMENTS, icon: Megaphone });
+  }
+  if (committeeRole === "treasurer") {
+    items.push(
+      { label: "Contributions", href: ROUTES.PORTAL_CONTRIBUTIONS, icon: Wallet },
+      { label: "Dividends", href: ROUTES.PORTAL_DIVIDENDS, icon: PiggyBank },
+      { label: "Reports", href: ROUTES.PORTAL_REPORTS, icon: BarChart3 }
+    );
+  }
+  return items;
+}

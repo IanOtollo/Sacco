@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
-import { ROUTES, type Role, portalHomeForRole } from "@/lib/constants";
+import { ROLES, ROUTES, type Role, portalHomeForRole } from "@/lib/constants";
 import { ForcePasswordChange } from "@/components/auth/force-password-change";
 import { IdleLogoutWatcher } from "@/components/auth/idle-logout-watcher";
 import { Loader2 } from "lucide-react";
@@ -26,8 +26,16 @@ export function PortalGate({
   );
 
   const suspended = currentUser?.isActive === false;
+  // Chairman/deputy keep role "super_admin" but still hold a personal
+  // member profile — let anyone with a linked memberId into a gate that
+  // allows MEMBER, even if their system role is otherwise higher.
+  const hasMemberProfileAccess =
+    allowedRoles.includes(ROLES.MEMBER) && !!currentUser?.memberId;
   const wrongRole =
-    currentUser && currentUser.role && !allowedRoles.includes(currentUser.role);
+    currentUser &&
+    currentUser.role &&
+    !allowedRoles.includes(currentUser.role) &&
+    !hasMemberProfileAccess;
 
   useEffect(() => {
     if (authLoading) return;

@@ -15,6 +15,7 @@ import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { TransactionModal } from "@/components/accounts/transaction-modal";
 import { TransactionTable } from "@/components/accounts/transaction-table";
 import { MemberContributionsTab } from "@/components/contributions/member-contributions-tab";
+import { CommitteeRoleSelect } from "@/components/members/committee-role-select";
 import {
   Tabs,
   TabsContent,
@@ -120,6 +121,9 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
             <p className="mt-0.5 font-mono text-sm text-muted-foreground">
               {member.memberNumber} · {member.phoneNumber}
             </p>
+            <div className="mt-2">
+              <CommitteeRoleSelect memberId={member._id} currentRole={member.committeeRole} />
+            </div>
           </div>
         </div>
         <DropdownMenu>

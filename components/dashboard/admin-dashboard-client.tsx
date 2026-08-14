@@ -263,7 +263,7 @@ export function AdminDashboardClient() {
       </div>
 
       <Card className="rounded-2xl border-border/50 p-6">
-        <h2 className="text-sm font-semibold">New member registrations</h2>
+        <h2 className="text-sm font-semibold">Membership growth</h2>
         <p className="text-xs text-muted-foreground">Last 12 months</p>
         <div className="mt-4 h-56">
           <ResponsiveContainer width="100%" height="100%">

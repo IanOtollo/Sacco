@@ -11,7 +11,11 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { AddContributionTypeDialog } from "@/components/contributions/add-contribution-type-dialog";
 import { FolderOpen, Users } from "lucide-react";
 
-export function ContributionsPageClient() {
+export function ContributionsPageClient({
+  basePath = "/admin/contributions",
+}: {
+  basePath?: string;
+}) {
   const types = useQuery(api.contributions.queries.listTypes);
 
   return (
@@ -45,7 +49,7 @@ export function ContributionsPageClient() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {types.map((t) => (
-              <Link key={t._id} href={`/admin/contributions/${t._id}`}>
+              <Link key={t._id} href={`${basePath}/${t._id}`}>
                 <Card className="h-full rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">

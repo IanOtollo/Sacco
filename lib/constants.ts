@@ -30,6 +30,10 @@ export const ROUTES = {
   PORTAL_UPDATES: "/portal/updates",
   PORTAL_NOTIFICATIONS: "/portal/notifications",
   PORTAL_PROFILE: "/portal/profile",
+  PORTAL_ANNOUNCEMENTS: "/portal/announcements",
+  PORTAL_CONTRIBUTIONS: "/portal/contributions",
+  PORTAL_DIVIDENDS: "/portal/dividends",
+  PORTAL_REPORTS: "/portal/reports",
 } as const;
 
 export function portalHomeForRole(role: Role | null | undefined): string {
