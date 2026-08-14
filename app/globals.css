@@ -165,3 +165,26 @@
     cursor: pointer;
   }
 }
+
+/* Slim, theme-matched scrollbars everywhere — currentColor so the thumb
+   adapts to whatever surface it's scrolling on (light content vs. the
+   dark sidebar) without separate light/dark rules. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, currentColor 25%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, currentColor 25%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, currentColor 40%, transparent);
+}

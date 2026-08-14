@@ -26,13 +26,13 @@ export function AdminSidebar() {
     >
       <div
         className={cn(
-          "flex h-16 items-center gap-2 border-b border-sidebar-border px-4",
+          "flex h-20 items-center gap-2 border-b border-sidebar-border px-4",
           collapsed && "justify-center px-0"
         )}
       >
         {!collapsed && (
           <>
-            <BrandMark size={44} />
+            <BrandMark size={72} />
             <span className="truncate font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
               {saccoName ?? "Edulaepe Credit and Saving"}
             </span>

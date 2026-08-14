@@ -32,14 +32,16 @@ export default async function LandingPage() {
   ]);
 
   return (
-    <div className="flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
-      {/* Auth — first in the DOM so mobile shows it up top; pinned to the
-          right and held in place (its own column never scrolls) on desktop. */}
-      <div className="order-1 flex items-center justify-center border-b border-border px-4 py-12 sm:px-6 lg:order-2 lg:h-screen lg:w-[440px] lg:shrink-0 lg:border-b-0 lg:border-l lg:px-8 lg:py-0">
+    <div className="flex flex-col lg:flex-row">
+      {/* Auth — first in the DOM so mobile shows it up top; sticky within
+          its column on desktop so it stays put while the page scrolls (one
+          native scrollbar at the outer window edge, not a second one
+          floating between the two columns). */}
+      <div className="order-1 flex items-center justify-center border-b border-border px-4 py-12 sm:px-6 lg:order-2 lg:sticky lg:top-0 lg:h-screen lg:w-[440px] lg:shrink-0 lg:self-start lg:border-b-0 lg:border-l lg:px-8 lg:py-0">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3">
             <Link href="/" className="flex items-center justify-center">
-              <BrandMark size={80} />
+              <BrandMark size={128} />
             </Link>
             <span className="font-heading text-lg font-bold tracking-tight">
               {saccoInfo.name}
@@ -56,8 +58,8 @@ export default async function LandingPage() {
       </div>
 
       {/* Content — second in the DOM (below auth on mobile); left column on
-          desktop, scrolling independently within its own pane. */}
-      <div className="order-2 lg:order-1 lg:h-screen lg:flex-1 lg:overflow-y-auto">
+          desktop, scrolling with the page (the auth column stays sticky). */}
+      <div className="order-2 lg:order-1 lg:flex-1">
         <section className="bg-primary/[0.04] py-20 px-4 sm:px-6 lg:px-12">
           <div className="mx-auto max-w-2xl">
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
@@ -134,7 +136,7 @@ export default async function LandingPage() {
         <footer className="border-t border-border py-16 px-4 sm:px-6 lg:px-12">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2">
-              <BrandMark size={48} />
+              <BrandMark size={64} />
               <span className="font-heading font-bold">{saccoInfo.name}</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">

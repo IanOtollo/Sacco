@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { createAccount } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -144,6 +145,35 @@ export const seedLoanProducts = internalMutation({
     }
 
     return { created };
+  },
+});
+
+// One-off ops utility for correcting a settings value directly (e.g. the
+// Sacco's real name arriving after the initial seed already ran and
+// seedSaccoSettings's "insert only if missing" guard no longer applies).
+// Internal-only, reachable via `npx convex run seed:forceSetSetting`.
+export const forceSetSetting = internalMutation({
+  args: { key: v.string(), value: v.string() },
+  handler: async (ctx, { key, value }) => {
+    const admins = await ctx.db.query("users").collect();
+    const superAdmin = admins.find((u) => u.role === "super_admin");
+    if (!superAdmin) throw new Error("No super admin exists yet");
+
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { value, updatedBy: superAdmin._id });
+    } else {
+      await ctx.db.insert("settings", {
+        key,
+        value,
+        description: key,
+        updatedBy: superAdmin._id,
+      });
+    }
   },
 });
 
