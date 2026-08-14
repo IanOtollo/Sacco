@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -9,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { EmptyState } from "@/components/shared/empty-state";
+import { LoansIssuedDialog } from "@/components/dashboard/loans-issued-dialog";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import {
   BarChart,
@@ -29,15 +31,11 @@ import {
   Wallet,
   Banknote,
   HandCoins,
-  AlertTriangle,
-  Clock,
-  TrendingUp,
   UserPlus,
   ClipboardCheck,
   Activity,
   CalendarClock,
   Landmark,
-  UserRoundX,
 } from "lucide-react";
 
 const PORTFOLIO_COLORS: Record<string, string> = {
@@ -63,12 +61,13 @@ function monthLabel(month: string) {
 
 export function AdminDashboardClient() {
   const data = useQuery(api.reports.queries.getAdminDashboard);
+  const [loansIssuedOpen, setLoansIssuedOpen] = useState(false);
 
   if (data === undefined) {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
@@ -93,7 +92,7 @@ export function AdminDashboardClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           icon={Users}
           label="Active members"
@@ -101,46 +100,29 @@ export function AdminDashboardClient() {
           tone="primary"
         />
         <StatCard
-          icon={Wallet}
-          label="Savings pool"
-          value={<CurrencyDisplay amount={stats.savingsPool} />}
-          tone="success"
+          icon={CalendarClock}
+          label="Long Term Capital"
+          value={<CurrencyDisplay amount={stats.sharesLongTermPool} />}
+          tone="secondary"
         />
         <StatCard
           icon={Banknote}
-          label="Shares pool"
-          value={<CurrencyDisplay amount={stats.sharesPool} />}
+          label="Short Term Capital"
+          value={<CurrencyDisplay amount={stats.sharesShortTermPool} />}
+          tone="secondary"
+        />
+        <StatCard
+          icon={Landmark}
+          label="Shares Capital"
+          value={<CurrencyDisplay amount={stats.sharesCapitalPool} />}
           tone="secondary"
         />
         <StatCard
           icon={HandCoins}
-          label="Active loans"
-          value={stats.activeLoansCount}
+          label="Total loans issued"
+          value={stats.disbursedLoansCount}
           tone="accent"
-        />
-        <StatCard
-          icon={HandCoins}
-          label="Outstanding loans"
-          value={<CurrencyDisplay amount={stats.outstandingTotal} />}
-          tone="info"
-        />
-        <StatCard
-          icon={Clock}
-          label="Pending applications"
-          value={stats.pendingApplications}
-          tone={stats.pendingApplications > 0 ? "warning" : "primary"}
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label="Overdue loans"
-          value={stats.overdueLoans}
-          tone={stats.overdueLoans > 0 ? "danger" : "primary"}
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="This month's collections"
-          value={<CurrencyDisplay amount={stats.thisMonthCollections} />}
-          tone="success"
+          onClick={() => setLoansIssuedOpen(true)}
         />
       </div>
 
@@ -265,55 +247,6 @@ export function AdminDashboardClient() {
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="rounded-2xl border-border/50 p-6">
-          <h2 className="text-sm font-semibold">Shares breakdown</h2>
-          <p className="text-xs text-muted-foreground">By type</p>
-          <div className="mt-4 space-y-3">
-            {[
-              { label: "Long-term shares", icon: CalendarClock, value: stats.sharesLongTermPool },
-              { label: "Short-term shares", icon: Banknote, value: stats.sharesShortTermPool },
-              { label: "Capital shares", icon: Landmark, value: stats.sharesCapitalPool },
-            ].map(({ label, icon: Icon, value }) => (
-              <div key={label} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Icon className="size-3.5" />
-                  {label}
-                </span>
-                <span className="font-semibold">
-                  <CurrencyDisplay amount={value} />
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl border-border/50 p-6">
-          <h2 className="text-sm font-semibold">Loan book</h2>
-          <p className="text-xs text-muted-foreground">Members vs. non-members</p>
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Landmark className="size-3.5" />
-                Total disbursed
-              </span>
-              <span className="font-semibold">
-                <CurrencyDisplay amount={stats.totalDisbursedAmount} />
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <UserRoundX className="size-3.5" />
-                Non-member loans ({stats.nonMemberLoansCount})
-              </span>
-              <span className="font-semibold">
-                <CurrencyDisplay amount={stats.nonMemberDisbursedAmount} />
-              </span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
       <Card className="rounded-2xl border-border/50 p-6">
         <h2 className="text-sm font-semibold">Membership growth</h2>
         <p className="text-xs text-muted-foreground">Last 12 months</p>
@@ -379,6 +312,8 @@ export function AdminDashboardClient() {
           </div>
         )}
       </Card>
+
+      <LoansIssuedDialog open={loansIssuedOpen} onOpenChange={setLoansIssuedOpen} />
     </div>
   );
 }

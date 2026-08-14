@@ -103,6 +103,7 @@ export const getAdminDashboard = query({
       (s, l) => s + l.amountDisbursed,
       0
     );
+    const disbursedLoansCount = disbursedLoans.length;
     const nonMemberDisbursedAmount = disbursedToNonMembers.reduce(
       (s, l) => s + l.amountDisbursed,
       0
@@ -190,6 +191,7 @@ export const getAdminDashboard = query({
         overdueLoans: overdueLoanIds.size,
         thisMonthCollections,
         totalDisbursedAmount,
+        disbursedLoansCount,
         nonMemberLoansCount: disbursedToNonMembers.length,
         nonMemberDisbursedAmount,
       },

@@ -1,5 +1,4 @@
 import { type LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const TONE_CHIP: Record<string, string> = {
@@ -12,19 +11,24 @@ const TONE_CHIP: Record<string, string> = {
   info: "bg-info/10 text-info",
 };
 
+const CARD_CLASSES =
+  "block w-full rounded-2xl bg-card p-5 text-left text-sm text-card-foreground ring-1 ring-foreground/10";
+
 export function StatCard({
   icon: Icon,
   label,
   value,
   tone = "primary",
+  onClick,
 }: {
   icon: LucideIcon;
   label: string;
   value: React.ReactNode;
   tone?: "primary" | "secondary" | "accent" | "success" | "warning" | "danger" | "info";
+  onClick?: () => void;
 }) {
-  return (
-    <Card className="rounded-2xl border-border/50 p-5">
+  const content = (
+    <>
       <div className="flex items-center gap-2.5">
         <div
           className={cn(
@@ -45,6 +49,20 @@ export function StatCard({
       >
         {value}
       </div>
-    </Card>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(CARD_CLASSES, "cursor-pointer transition-shadow hover:shadow-md")}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={CARD_CLASSES}>{content}</div>;
 }
