@@ -5,15 +5,26 @@ import { requireAdmin, requireMember, requireUser } from "../authz";
 export const listAll = query({
   args: {
     status: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
   },
-  handler: async (ctx, { status }) => {
+  handler: async (ctx, { status, startDate, endDate }) => {
     await requireAdmin(ctx);
-    const loans = status
+    let loans = status
       ? await ctx.db
           .query("loans")
           .withIndex("by_status", (q) => q.eq("status", status as never))
           .collect()
       : await ctx.db.query("loans").collect();
+
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      loans = loans.filter((l) => l._creationTime >= start);
+    }
+    if (endDate) {
+      const end = new Date(endDate).getTime() + 24 * 60 * 60 * 1000;
+      loans = loans.filter((l) => l._creationTime < end);
+    }
 
     loans.sort((a, b) => b._creationTime - a._creationTime);
 

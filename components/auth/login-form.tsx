@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from "@convex-dev/auth/react";
 import { toast } from "sonner";
@@ -50,6 +50,8 @@ export function LoginForm() {
   const { isAuthenticated } = useConvexAuth();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const recordLogin = useMutation(api.users.recordLogin);
+  const hasRecordedLogin = useRef(false);
 
   const currentUser = useQuery(
     api.users.getCurrentUser,
@@ -72,8 +74,13 @@ export function LoginForm() {
       return;
     }
 
+    if (!hasRecordedLogin.current) {
+      hasRecordedLogin.current = true;
+      void recordLogin({});
+    }
+
     router.push(portalHomeForRole(currentUser.role));
-  }, [isAuthenticated, currentUser, router, signOut]);
+  }, [isAuthenticated, currentUser, router, signOut, recordLogin]);
 
   async function onSubmit(values: LoginValues) {
     setSubmitting(true);

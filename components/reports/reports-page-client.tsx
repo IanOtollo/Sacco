@@ -25,43 +25,143 @@ import {
 } from "@/components/ui/table";
 import { downloadCsv } from "@/lib/csv";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
+
+function DateRangeFilter({
+  startDate,
+  endDate,
+  onStartDate,
+  onEndDate,
+}: {
+  startDate: string;
+  endDate: string;
+  onStartDate: (v: string) => void;
+  onEndDate: (v: string) => void;
+}) {
+  const hasFilter = !!startDate || !!endDate;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Input
+        type="date"
+        value={startDate}
+        onChange={(e) => onStartDate(e.target.value)}
+        className="w-40"
+      />
+      <span className="text-sm text-muted-foreground">to</span>
+      <Input
+        type="date"
+        value={endDate}
+        onChange={(e) => onEndDate(e.target.value)}
+        className="w-40"
+      />
+      {hasFilter && (
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          onClick={() => {
+            onStartDate("");
+            onEndDate("");
+          }}
+          aria-label="Clear date range"
+        >
+          <X className="size-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 function FinancialSummaryTab() {
-  const summary = useQuery(api.reports.queries.getFinancialSummary);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const summary = useQuery(api.reports.queries.getFinancialSummary, {
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+  });
 
-  if (summary === undefined) {
-    return <Skeleton className="h-64 w-full rounded-2xl" />;
-  }
-
-  const rows = [
-    { label: "Total savings", value: summary.totalSavings },
-    { label: "Total shares", value: summary.totalShares },
-    { label: "Total assets", value: summary.totalAssets },
-    { label: "Outstanding loans", value: summary.totalOutstanding },
-    { label: "Interest earned", value: summary.interestEarned },
-    { label: "Fees collected", value: summary.feesCollected },
-    { label: "Dividends paid", value: summary.dividendsPaid },
-  ];
+  const balanceRows = summary
+    ? [
+        { label: "Total savings", value: summary.totalSavings },
+        { label: "Total shares", value: summary.totalShares },
+        { label: "Total assets", value: summary.totalAssets },
+        { label: "Outstanding loans", value: summary.totalOutstanding },
+      ]
+    : [];
+  const periodRows = summary
+    ? [
+        { label: "Interest earned", value: summary.interestEarned },
+        { label: "Fees collected", value: summary.feesCollected },
+        { label: "Dividends paid", value: summary.dividendsPaid },
+      ]
+    : [];
 
   return (
-    <Card className="rounded-2xl border-border/50 p-6">
-      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {rows.map((r) => (
-          <div key={r.label} className="flex items-center justify-between border-b border-border/60 pb-3">
-            <dt className="text-sm text-muted-foreground">{r.label}</dt>
-            <dd className="font-semibold">
-              <CurrencyDisplay amount={r.value} />
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
+    <div>
+      <div className="mb-3">
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDate={setStartDate}
+          onEndDate={setEndDate}
+        />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Date range scopes interest, fees, and dividends below. Balances are
+          always as of now.
+        </p>
+      </div>
+      {summary === undefined ? (
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : (
+        <div className="space-y-4">
+          <Card className="rounded-2xl border-border/50 p-6">
+            <h3 className="mb-3 text-xs font-medium text-muted-foreground uppercase">
+              Current balances
+            </h3>
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {balanceRows.map((r) => (
+                <div
+                  key={r.label}
+                  className="flex items-center justify-between border-b border-border/60 pb-3"
+                >
+                  <dt className="text-sm text-muted-foreground">{r.label}</dt>
+                  <dd className="font-semibold">
+                    <CurrencyDisplay amount={r.value} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+          <Card className="rounded-2xl border-border/50 p-6">
+            <h3 className="mb-3 text-xs font-medium text-muted-foreground uppercase">
+              {startDate || endDate ? "Selected period" : "All time"}
+            </h3>
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {periodRows.map((r) => (
+                <div
+                  key={r.label}
+                  className="flex items-center justify-between border-b border-border/60 pb-3"
+                >
+                  <dt className="text-sm text-muted-foreground">{r.label}</dt>
+                  <dd className="font-semibold">
+                    <CurrencyDisplay amount={r.value} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
 function MemberReportTab() {
-  const members = useQuery(api.members.queries.list, {});
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const members = useQuery(api.members.queries.list, {
+    joinedStart: startDate || undefined,
+    joinedEnd: endDate || undefined,
+  });
 
   function handleExport() {
     if (!members) return;
@@ -83,7 +183,13 @@ function MemberReportTab() {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDate={setStartDate}
+          onEndDate={setEndDate}
+        />
         <Button size="sm" variant="outline" onClick={handleExport} disabled={!members}>
           <Download className="size-4" />
           Export CSV
@@ -133,7 +239,12 @@ function MemberReportTab() {
 }
 
 function LoanReportTab() {
-  const loans = useQuery(api.loans.queries.listAll, {});
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const loans = useQuery(api.loans.queries.listAll, {
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+  });
 
   function handleExport() {
     if (!loans) return;
@@ -157,15 +268,21 @@ function LoanReportTab() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Delinquency rate: <span className="font-medium text-foreground">{delinquencyRate}%</span>
-        </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDate={setStartDate}
+          onEndDate={setEndDate}
+        />
         <Button size="sm" variant="outline" onClick={handleExport} disabled={!loans}>
           <Download className="size-4" />
           Export CSV
         </Button>
       </div>
+      <p className="mb-3 text-sm text-muted-foreground">
+        Delinquency rate: <span className="font-medium text-foreground">{delinquencyRate}%</span>
+      </p>
       {loans === undefined ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
       ) : (
@@ -233,20 +350,12 @@ function TransactionReportTab() {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-40"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-40"
-          />
-        </div>
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDate={setStartDate}
+          onEndDate={setEndDate}
+        />
         <Button size="sm" variant="outline" onClick={handleExport} disabled={!transactions}>
           <Download className="size-4" />
           Export CSV
@@ -297,7 +406,8 @@ export function ReportsPageClient() {
         Reports
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {formatDate(new Date().toISOString())} · export any report to CSV.
+        {formatDate(new Date().toISOString())} · pick any date range, export
+        any report to CSV.
       </p>
 
       <Tabs defaultValue="financial" className="mt-6">

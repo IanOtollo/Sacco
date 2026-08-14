@@ -233,8 +233,11 @@ export const getMyDashboard = query({
 });
 
 export const getFinancialSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+  },
+  handler: async (ctx, { startDate, endDate }) => {
     await requireAdmin(ctx);
 
     const [accounts, loans, dividends] = await Promise.all([
@@ -243,6 +246,12 @@ export const getFinancialSummary = query({
       ctx.db.query("dividends").collect(),
     ]);
 
+    const start = startDate ? new Date(startDate).getTime() : null;
+    const end = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : null;
+    const inRange = (t: number) => (start === null || t >= start) && (end === null || t < end);
+
+    // Balances are point-in-time (as of now) — a date range only scopes the
+    // period-based flow metrics below (interest earned, fees, dividends).
     const totalSavings = accounts
       .filter((a) => a.type === "savings")
       .reduce((s, a) => s + a.balance, 0);
@@ -252,15 +261,17 @@ export const getFinancialSummary = query({
     const totalOutstanding = loans
       .filter((l) => ["active", "disbursed"].includes(l.status))
       .reduce((s, l) => s + l.outstandingBalance, 0);
-    const interestEarned = loans
+
+    const loansInRange = loans.filter((l) => inRange(l._creationTime));
+    const interestEarned = loansInRange
       .filter((l) => ["active", "disbursed", "fully_paid"].includes(l.status))
       .reduce((s, l) => s + l.interestAmount, 0);
-    const feesCollected = loans.reduce(
+    const feesCollected = loansInRange.reduce(
       (s, l) => s + l.processingFee + l.insuranceFee,
       0
     );
     const dividendsPaid = dividends
-      .filter((d) => d.status === "distributed")
+      .filter((d) => d.status === "distributed" && inRange(d._creationTime))
       .reduce((s, d) => s + d.totalPool, 0);
 
     return {

@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { notify } from "../notifications/helpers";
+import { logSystemAction } from "../audit";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -72,6 +73,15 @@ export const checkOverdueInstallments = internalMutation({
         });
       }
     }
+
+    if (loanCache.size > 0) {
+      await logSystemAction(ctx, {
+        action: "cron.checkOverdueInstallments",
+        entityType: "loanSchedule",
+        entityId: "bulk",
+        details: { loansFlagged: loanCache.size },
+      });
+    }
   },
 });
 
@@ -87,6 +97,7 @@ export const sendPaymentReminders = internalMutation({
       .withIndex("by_dueDate", (q) => q.eq("dueDate", target))
       .collect();
 
+    let remindersSent = 0;
     for (const installment of dueInThreeDays) {
       if (installment.status !== "upcoming") continue;
       const loan = await ctx.db.get(installment.loanId);
@@ -102,6 +113,16 @@ export const sendPaymentReminders = internalMutation({
         relatedEntityType: "loan",
         relatedEntityId: loan._id,
         actionUrl: `/portal/loans/${loan._id}`,
+      });
+      remindersSent++;
+    }
+
+    if (remindersSent > 0) {
+      await logSystemAction(ctx, {
+        action: "cron.sendPaymentReminders",
+        entityType: "loanSchedule",
+        entityId: "bulk",
+        details: { remindersSent },
       });
     }
   },

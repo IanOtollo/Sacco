@@ -13,6 +13,8 @@ export const list = query({
         v.literal("exited")
       )
     ),
+    joinedStart: v.optional(v.string()),
+    joinedEnd: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -31,6 +33,13 @@ export const list = query({
           .toLowerCase()
           .includes(term)
       );
+    }
+
+    if (args.joinedStart) {
+      members = members.filter((m) => m.dateJoined >= args.joinedStart!);
+    }
+    if (args.joinedEnd) {
+      members = members.filter((m) => m.dateJoined <= args.joinedEnd!);
     }
 
     members.sort((a, b) => b._creationTime - a._creationTime);
