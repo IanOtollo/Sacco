@@ -24,7 +24,10 @@ export default async function LandingPage() {
     redirect(portalHomeForRole(user.role));
   }
 
-  const stats = await fetchQuery(api.reports.queries.getLandingStats, {});
+  const [stats, saccoName] = await Promise.all([
+    fetchQuery(api.reports.queries.getLandingStats, {}),
+    fetchQuery(api.settings.queries.getSaccoName, {}),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -35,7 +38,7 @@ export default async function LandingPage() {
               <Landmark className="size-5" />
             </div>
             <span className="font-heading text-lg font-bold tracking-tight">
-              Client Sacco
+              {saccoName}
             </span>
           </div>
           <Button
@@ -52,7 +55,7 @@ export default async function LandingPage() {
               Save together. Borrow smart. Grow as one.
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              Client Sacco helps members build savings, access affordable
+              {saccoName} helps members build savings, access affordable
               credit, and share in the cooperative&apos;s success — all
               managed transparently in one place.
             </p>
@@ -137,7 +140,7 @@ export default async function LandingPage() {
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Landmark className="size-4" />
                 </div>
-                <span className="font-heading font-bold">Client Sacco</span>
+                <span className="font-heading font-bold">{saccoName}</span>
               </div>
               <p className="mt-3 max-w-xs text-sm text-muted-foreground">
                 A member-owned savings and credit cooperative.
@@ -159,7 +162,7 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="mt-10 border-t border-border pt-6 text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Client Sacco. All rights
+            &copy; {new Date().getFullYear()} {saccoName}. All rights
             reserved.
           </div>
         </div>

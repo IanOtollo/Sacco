@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { fetchQuery } from "convex/nextjs";
 import { Landmark } from "lucide-react";
+import { api } from "@/convex/_generated/api";
 import { getCurrentUserServer } from "@/lib/auth-server";
 import { portalHomeForRole } from "@/lib/constants";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -15,6 +17,8 @@ export default async function LoginPage() {
     redirect(portalHomeForRole(user.role));
   }
 
+  const saccoName = await fetchQuery(api.settings.queries.getSaccoName, {});
+
   return (
     <div className="flex flex-1 items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-sm">
@@ -26,7 +30,7 @@ export default async function LoginPage() {
             <Landmark className="size-6" />
           </Link>
           <span className="font-heading text-lg font-bold tracking-tight">
-            Client Sacco
+            {saccoName}
           </span>
         </div>
         <Card className="rounded-2xl border-border/50 shadow-sm">

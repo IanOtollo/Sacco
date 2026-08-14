@@ -25,35 +25,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { LoanProductForm } from "@/components/loan-products/loan-product-form";
-import { Layers, Plus, Sparkles, Pencil } from "lucide-react";
+import { Layers, Plus, Pencil } from "lucide-react";
 
 export function LoanProductsPageClient() {
   const products = useQuery(api.loanProducts.queries.list);
   const setActive = useMutation(api.loanProducts.mutations.setActive);
-  const seedDefaults = useMutation(api.loanProducts.mutations.seedDefaults);
 
   const [dialogState, setDialogState] = useState<
     { mode: "create" } | { mode: "edit"; product: Doc<"loanProducts"> } | null
   >(null);
-  const [seeding, setSeeding] = useState(false);
-
-  async function handleSeed() {
-    setSeeding(true);
-    try {
-      const result = await seedDefaults({});
-      toast.success(
-        result.created > 0
-          ? `Added ${result.created} default loan product${result.created === 1 ? "" : "s"}`
-          : "Default loan products already exist"
-      );
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not seed defaults"
-      );
-    } finally {
-      setSeeding(false);
-    }
-  }
 
   async function handleToggleActive(product: Doc<"loanProducts">) {
     try {
@@ -76,16 +56,10 @@ export function LoanProductsPageClient() {
             Configure the loan types members can apply for.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSeed} disabled={seeding}>
-            <Sparkles className="size-4" />
-            Seed defaults
-          </Button>
-          <Button onClick={() => setDialogState({ mode: "create" })}>
-            <Plus className="size-4" />
-            New product
-          </Button>
-        </div>
+        <Button onClick={() => setDialogState({ mode: "create" })}>
+          <Plus className="size-4" />
+          New product
+        </Button>
       </div>
 
       <div className="mt-6">
@@ -99,11 +73,11 @@ export function LoanProductsPageClient() {
           <EmptyState
             icon={Layers}
             title="No loan products yet"
-            description="Seed the standard Sacco loan products or create your own."
+            description="Create your first loan product to let members start applying."
             action={
-              <Button variant="outline" onClick={handleSeed} disabled={seeding}>
-                <Sparkles className="size-4" />
-                Seed defaults
+              <Button onClick={() => setDialogState({ mode: "create" })}>
+                <Plus className="size-4" />
+                New product
               </Button>
             }
           />

@@ -32,7 +32,6 @@ export const SETTINGS_DEFINITIONS = {
     description: "Days late before a penalty applies",
     default: "5",
   },
-  "system.currency": { description: "Currency code", default: "KES" },
 } as const;
 
 export type SettingsKey = keyof typeof SETTINGS_DEFINITIONS;

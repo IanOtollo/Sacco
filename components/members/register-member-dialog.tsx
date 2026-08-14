@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
 import { toast } from "sonner";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +21,7 @@ type Credentials = { memberNumber: string; phone: string; pin: string };
 export function RegisterMemberDialog() {
   const [open, setOpen] = useState(false);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const saccoName = useQuery(api.settings.queries.getSaccoName);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -29,7 +32,7 @@ export function RegisterMemberDialog() {
 
   function copyCredentials() {
     if (!credentials) return;
-    const text = `Client Sacco login\nMember: ${credentials.memberNumber}\nPhone: ${formatPhoneDisplay(credentials.phone)}\nPIN: ${credentials.pin}`;
+    const text = `${saccoName ?? "Client Sacco"} login\nMember: ${credentials.memberNumber}\nPhone: ${formatPhoneDisplay(credentials.phone)}\nPIN: ${credentials.pin}`;
     void navigator.clipboard.writeText(text);
     toast.success("Credentials copied to clipboard");
   }

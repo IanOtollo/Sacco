@@ -13,6 +13,16 @@ import { Loader2 } from "lucide-react";
 
 type FormValues = Record<string, string>;
 
+// react-hook-form parses dots in field names as nested paths, so settings
+// keys (which use dots, e.g. "sacco.name") are mapped to safe flat form
+// field names here and back to real keys on submit.
+function toFieldName(key: string) {
+  return key.replace(/\./g, "__");
+}
+function toSettingsKey(fieldName: string) {
+  return fieldName.replace(/__/g, ".");
+}
+
 const SECTIONS: { title: string; fields: { key: string; label: string; type?: string }[] }[] = [
   {
     title: "Sacco details",
@@ -41,10 +51,6 @@ const SECTIONS: { title: string; fields: { key: string; label: string; type?: st
       { key: "loan.latePenaltyGraceDays", label: "Late penalty grace (days)", type: "number" },
     ],
   },
-  {
-    title: "System settings",
-    fields: [{ key: "system.currency", label: "Currency code" }],
-  },
 ];
 
 export function SettingsPageClient() {
@@ -57,7 +63,7 @@ export function SettingsPageClient() {
   useEffect(() => {
     if (!settings) return;
     const defaults: FormValues = {};
-    for (const s of settings) defaults[s.key] = s.value;
+    for (const s of settings) defaults[toFieldName(s.key)] = s.value;
     reset(defaults);
   }, [settings, reset]);
 
@@ -65,7 +71,10 @@ export function SettingsPageClient() {
     setSubmitting(true);
     try {
       await setMany({
-        entries: Object.entries(values).map(([key, value]) => ({ key, value })),
+        entries: Object.entries(values).map(([fieldName, value]) => ({
+          key: toSettingsKey(fieldName),
+          value,
+        })),
       });
       toast.success("Settings saved");
     } catch (error) {
@@ -108,7 +117,7 @@ export function SettingsPageClient() {
                     type={field.type ?? "text"}
                     disabled={submitting}
                     className="mt-1.5"
-                    {...register(field.key)}
+                    {...register(toFieldName(field.key))}
                   />
                 </div>
               ))}

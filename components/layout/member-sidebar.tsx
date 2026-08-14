@@ -3,14 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "convex/react";
 import { Landmark, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { memberSidebarNav } from "@/lib/nav-config";
+import { api } from "@/convex/_generated/api";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function MemberSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const saccoName = useQuery(api.settings.queries.getSaccoName);
 
   return (
     <aside
@@ -31,7 +34,7 @@ export function MemberSidebar() {
               <Landmark className="size-4" />
             </div>
             <span className="truncate font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
-              Client Sacco
+              {saccoName ?? "Client Sacco"}
             </span>
           </>
         )}
