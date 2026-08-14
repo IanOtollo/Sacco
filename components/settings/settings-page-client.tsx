@@ -98,7 +98,7 @@ export function SettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="font-heading text-2xl font-bold tracking-tight">
         Settings
       </h1>
@@ -140,7 +140,7 @@ export function SettingsPageClient() {
           Shown to visitors on the landing page. Starts with comprehensive
           default text you can customize below.
         </p>
-        <div className="mt-4 space-y-6">
+        <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <LegalDocumentEditor label="Privacy Policy" documentKey="privacy_policy" />
           <LegalDocumentEditor label="Terms of Service" documentKey="terms_of_service" />
         </div>
