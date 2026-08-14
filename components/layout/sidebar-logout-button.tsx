@@ -20,7 +20,7 @@ export function SidebarLogoutButton({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={() => void handleSignOut()}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-danger/10 hover:text-danger",
+        "flex w-full items-center gap-3 rounded-lg bg-danger px-3 py-2 text-sm font-medium text-danger-foreground transition-opacity hover:opacity-90",
         collapsed && "justify-center px-0"
       )}
     >
