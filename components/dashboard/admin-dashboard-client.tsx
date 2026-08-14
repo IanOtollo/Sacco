@@ -35,6 +35,9 @@ import {
   UserPlus,
   ClipboardCheck,
   Activity,
+  CalendarClock,
+  Landmark,
+  UserRoundX,
 } from "lucide-react";
 
 const PORTFOLIO_COLORS: Record<string, string> = {
@@ -65,7 +68,7 @@ export function AdminDashboardClient() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
@@ -104,9 +107,21 @@ export function AdminDashboardClient() {
           tone="success"
         />
         <StatCard
+          icon={CalendarClock}
+          label="Long-term shares"
+          value={<CurrencyDisplay amount={stats.sharesLongTermPool} />}
+          tone="secondary"
+        />
+        <StatCard
           icon={Banknote}
-          label="Shares pool"
-          value={<CurrencyDisplay amount={stats.sharesPool} />}
+          label="Short-term shares"
+          value={<CurrencyDisplay amount={stats.sharesShortTermPool} />}
+          tone="secondary"
+        />
+        <StatCard
+          icon={Landmark}
+          label="Capital shares"
+          value={<CurrencyDisplay amount={stats.sharesCapitalPool} />}
           tone="secondary"
         />
         <StatCard
@@ -120,6 +135,18 @@ export function AdminDashboardClient() {
           label="Outstanding loans"
           value={<CurrencyDisplay amount={stats.outstandingTotal} />}
           tone="info"
+        />
+        <StatCard
+          icon={Landmark}
+          label="Total loans disbursed"
+          value={<CurrencyDisplay amount={stats.totalDisbursedAmount} />}
+          tone="info"
+        />
+        <StatCard
+          icon={UserRoundX}
+          label="Non-member loans"
+          value={`${stats.nonMemberLoansCount} · ${formatCurrency(stats.nonMemberDisbursedAmount)}`}
+          tone="secondary"
         />
         <StatCard
           icon={Clock}
@@ -146,9 +173,9 @@ export function AdminDashboardClient() {
           variant="outline"
           nativeButton={false}
           render={
-            <Link href="/admin/members">
+            <Link href="/admin/applications">
               <UserPlus className="size-4" />
-              Register member
+              Review applications
             </Link>
           }
         />

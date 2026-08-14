@@ -105,14 +105,14 @@ export default defineSchema({
     phoneNumber: v.string(), // canonical +254XXXXXXXXX, used for login
     email: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
-    gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     occupation: v.optional(v.string()),
     employer: v.optional(v.string()),
     postalAddress: v.optional(v.string()),
     residentialAddress: v.optional(v.string()),
-    nextOfKinName: v.string(),
-    nextOfKinPhone: v.string(),
-    nextOfKinRelationship: v.string(),
+    nextOfKinName: v.optional(v.string()),
+    nextOfKinPhone: v.optional(v.string()),
+    nextOfKinRelationship: v.optional(v.string()),
     profilePhoto: v.optional(v.id("_storage")),
     dateJoined: v.string(), // ISO date
     status: v.union(
@@ -123,6 +123,10 @@ export default defineSchema({
     ),
     userId: v.optional(v.id("users")),
     registeredBy: v.id("users"),
+    // Non-member borrowers: a lightweight record with just name/phone/ID
+    // (no login account, no savings/shares accounts) created solely so a
+    // loan can reference them like any other member. See loans/mutations.ts.
+    isNonMember: v.optional(v.boolean()),
     // Sacco governance office held, if any. Source of truth — mirrored to
     // users.committeeRole whenever this changes. See setCommitteeRole.
     committeeRole: v.optional(
@@ -189,8 +193,13 @@ export default defineSchema({
   // ─── ACCOUNTS ─────────────────────────────────────
   accounts: defineTable({
     memberId: v.id("members"),
-    type: v.union(v.literal("savings"), v.literal("shares")),
-    accountNumber: v.string(), // SAV-SACCO-0001 or SHR-SACCO-0001
+    type: v.union(
+      v.literal("savings"),
+      v.literal("shares_long_term"),
+      v.literal("shares_short_term"),
+      v.literal("shares_capital")
+    ),
+    accountNumber: v.string(), // SAV-SACCO-0001, SHL/SHS/SHC-SACCO-0001
     balance: v.float64(),
     minimumBalance: v.float64(),
     isActive: v.boolean(),
@@ -307,6 +316,10 @@ export default defineSchema({
     approvedAt: v.optional(v.string()),
     disbursedBy: v.optional(v.id("users")),
     appliedAt: v.string(),
+    // Non-member loans skip the guarantor workflow and require collateral
+    // instead — see members.isNonMember and loans/mutations.ts issueLoan.
+    collateralDescription: v.optional(v.string()),
+    collateralValue: v.optional(v.float64()),
   })
     .index("by_member", ["memberId"])
     .index("by_product", ["productId"])

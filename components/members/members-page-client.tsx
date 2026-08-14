@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { MemberTable } from "@/components/members/member-table";
-import { RegisterMemberDialog } from "@/components/members/register-member-dialog";
 import { SearchInput } from "@/components/shared/search-input";
 import {
   Select,
@@ -34,10 +33,10 @@ export function MembersPageClient() {
             Members
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Register and manage Sacco members.
+            Members join via self-registration and admin approval — see
+            Applications.
           </p>
         </div>
-        <RegisterMemberDialog />
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">

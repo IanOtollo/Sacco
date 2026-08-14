@@ -35,6 +35,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+const ACCOUNT_TYPE_LABEL = {
+  savings: "Savings",
+  shares_long_term: "Long-term shares",
+  shares_short_term: "Short-term shares",
+  shares_capital: "Capital shares",
+} as const;
+
 const schema = z.object({
   amount: z
     .string()
@@ -58,7 +65,7 @@ export function TransactionModal({
   onOpenChange: (open: boolean) => void;
   mode: "deposit" | "withdraw";
   memberId: Id<"members">;
-  accountType: "savings" | "shares";
+  accountType: keyof typeof ACCOUNT_TYPE_LABEL;
 }) {
   const deposit = useMutation(api.accounts.mutations.deposit);
   const withdraw = useMutation(api.accounts.mutations.withdraw);
@@ -109,8 +116,8 @@ export function TransactionModal({
               {mode === "deposit" ? "Record deposit" : "Record withdrawal"}
             </DialogTitle>
             <DialogDescription>
-              {accountType === "savings" ? "Savings" : "Shares"} account ·
-              recorded manually against a cash/M-Pesa/bank receipt.
+              {ACCOUNT_TYPE_LABEL[accountType]} account · recorded manually
+              against a cash/M-Pesa/bank receipt.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -193,7 +200,7 @@ export function TransactionModal({
         title={mode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}
         description={
           pending
-            ? `${mode === "deposit" ? "Deposit" : "Withdraw"} KES ${Number(pending.amount).toLocaleString()} ${mode === "deposit" ? "to" : "from"} this member's ${accountType} account via ${pending.channel.replace("_", " ")}. This cannot be undone.`
+            ? `${mode === "deposit" ? "Deposit" : "Withdraw"} KES ${Number(pending.amount).toLocaleString()} ${mode === "deposit" ? "to" : "from"} this member's ${ACCOUNT_TYPE_LABEL[accountType].toLowerCase()} account via ${pending.channel.replace("_", " ")}. This cannot be undone.`
             : ""
         }
         confirmLabel={mode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}

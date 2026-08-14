@@ -27,10 +27,13 @@ export const declare = mutation({
       declaredBy: admin._id,
     });
 
+    // Dividends are paid on share capital specifically — the traditional
+    // Sacco definition of a member's ownership stake. Long-term/short-term
+    // shares are separate savings-style products, not dividend-bearing.
     const sharesAccounts = await ctx.db
       .query("accounts")
       .withIndex("by_member_type")
-      .filter((q) => q.eq(q.field("type"), "shares"))
+      .filter((q) => q.eq(q.field("type"), "shares_capital"))
       .collect();
 
     let payoutCount = 0;

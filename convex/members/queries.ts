@@ -1,28 +1,6 @@
 import { v } from "convex/values";
-import { internalQuery, query } from "../_generated/server";
+import { query } from "../_generated/server";
 import { requireTreasurer, requireUser } from "../authz";
-
-// Internal-only: used by the registerMember action to reject duplicate
-// phone numbers / national IDs with a clear error before an auth account
-// is ever created for them.
-export const findDuplicate = internalQuery({
-  args: { phoneNumber: v.string(), nationalId: v.string() },
-  handler: async (ctx, { phoneNumber, nationalId }) => {
-    const [byPhone, byId] = await Promise.all([
-      ctx.db
-        .query("members")
-        .withIndex("by_phone", (q) => q.eq("phoneNumber", phoneNumber))
-        .first(),
-      ctx.db
-        .query("members")
-        .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
-        .first(),
-    ]);
-    if (byPhone) return { field: "phone" as const };
-    if (byId) return { field: "nationalId" as const };
-    return null;
-  },
-});
 
 export const list = query({
   args: {
@@ -73,11 +51,13 @@ export const list = query({
           .withIndex("by_member", (q) => q.eq("memberId", m._id))
           .collect();
         const savings = accounts.find((a) => a.type === "savings");
-        const shares = accounts.find((a) => a.type === "shares");
+        const sharesBalance = accounts
+          .filter((a) => a.type !== "savings")
+          .reduce((sum, a) => sum + a.balance, 0);
         return {
           ...m,
           savingsBalance: savings?.balance ?? 0,
-          sharesBalance: shares?.balance ?? 0,
+          sharesBalance,
         };
       })
     );

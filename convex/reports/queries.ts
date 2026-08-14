@@ -64,13 +64,22 @@ export const getAdminDashboard = query({
       ctx.db.query("loanSchedule").collect(),
     ]);
 
-    const activeMembers = members.filter((m) => m.status === "active").length;
+    const activeMembers = members.filter(
+      (m) => m.status === "active" && !m.isNonMember
+    ).length;
     const savingsPool = accounts
       .filter((a) => a.type === "savings")
       .reduce((s, a) => s + a.balance, 0);
-    const sharesPool = accounts
-      .filter((a) => a.type === "shares")
+    const sharesLongTermPool = accounts
+      .filter((a) => a.type === "shares_long_term")
       .reduce((s, a) => s + a.balance, 0);
+    const sharesShortTermPool = accounts
+      .filter((a) => a.type === "shares_short_term")
+      .reduce((s, a) => s + a.balance, 0);
+    const sharesCapitalPool = accounts
+      .filter((a) => a.type === "shares_capital")
+      .reduce((s, a) => s + a.balance, 0);
+    const sharesPool = sharesLongTermPool + sharesShortTermPool + sharesCapitalPool;
 
     const activeLoans = loans.filter((l) =>
       ["active", "disbursed"].includes(l.status)
@@ -82,6 +91,22 @@ export const getAdminDashboard = query({
     const pendingApplications = loans.filter((l) =>
       ["pending_guarantors", "pending_approval"].includes(l.status)
     ).length;
+
+    const memberByIdForLoans = new Map(members.map((m) => [m._id, m]));
+    const disbursedLoans = loans.filter((l) =>
+      ["disbursed", "active", "fully_paid", "defaulted", "written_off"].includes(l.status)
+    );
+    const disbursedToNonMembers = disbursedLoans.filter(
+      (l) => memberByIdForLoans.get(l.memberId)?.isNonMember
+    );
+    const totalDisbursedAmount = disbursedLoans.reduce(
+      (s, l) => s + l.amountDisbursed,
+      0
+    );
+    const nonMemberDisbursedAmount = disbursedToNonMembers.reduce(
+      (s, l) => s + l.amountDisbursed,
+      0
+    );
 
     const today = new Date().toISOString().slice(0, 10);
     const overdueLoanIds = new Set(
@@ -154,11 +179,17 @@ export const getAdminDashboard = query({
         activeMembers,
         savingsPool,
         sharesPool,
+        sharesLongTermPool,
+        sharesShortTermPool,
+        sharesCapitalPool,
         activeLoansCount: activeLoans.length,
         outstandingTotal,
         pendingApplications,
         overdueLoans: overdueLoanIds.size,
         thisMonthCollections,
+        totalDisbursedAmount,
+        nonMemberLoansCount: disbursedToNonMembers.length,
+        nonMemberDisbursedAmount,
       },
       monthlyCollections,
       memberGrowth,
@@ -195,7 +226,9 @@ export const getMyDashboard = query({
     ]);
 
     const savings = accounts.find((a) => a.type === "savings");
-    const shares = accounts.find((a) => a.type === "shares");
+    const sharesLongTerm = accounts.find((a) => a.type === "shares_long_term");
+    const sharesShortTerm = accounts.find((a) => a.type === "shares_short_term");
+    const sharesCapital = accounts.find((a) => a.type === "shares_capital");
     const activeLoan = loans.find((l) => ["active", "disbursed"].includes(l.status));
 
     let activeLoanSchedule = null;
@@ -223,7 +256,13 @@ export const getMyDashboard = query({
 
     return {
       savingsBalance: savings?.balance ?? 0,
-      sharesBalance: shares?.balance ?? 0,
+      sharesBalance:
+        (sharesLongTerm?.balance ?? 0) +
+        (sharesShortTerm?.balance ?? 0) +
+        (sharesCapital?.balance ?? 0),
+      sharesLongTermBalance: sharesLongTerm?.balance ?? 0,
+      sharesShortTermBalance: sharesShortTerm?.balance ?? 0,
+      sharesCapitalBalance: sharesCapital?.balance ?? 0,
       activeLoan,
       nextInstallment: activeLoanSchedule,
       recentTransactions: transactions,
@@ -255,9 +294,16 @@ export const getFinancialSummary = query({
     const totalSavings = accounts
       .filter((a) => a.type === "savings")
       .reduce((s, a) => s + a.balance, 0);
-    const totalShares = accounts
-      .filter((a) => a.type === "shares")
+    const totalSharesLongTerm = accounts
+      .filter((a) => a.type === "shares_long_term")
       .reduce((s, a) => s + a.balance, 0);
+    const totalSharesShortTerm = accounts
+      .filter((a) => a.type === "shares_short_term")
+      .reduce((s, a) => s + a.balance, 0);
+    const totalSharesCapital = accounts
+      .filter((a) => a.type === "shares_capital")
+      .reduce((s, a) => s + a.balance, 0);
+    const totalShares = totalSharesLongTerm + totalSharesShortTerm + totalSharesCapital;
     const totalOutstanding = loans
       .filter((l) => ["active", "disbursed"].includes(l.status))
       .reduce((s, l) => s + l.outstandingBalance, 0);
@@ -277,6 +323,9 @@ export const getFinancialSummary = query({
     return {
       totalSavings,
       totalShares,
+      totalSharesLongTerm,
+      totalSharesShortTerm,
+      totalSharesCapital,
       totalAssets: totalSavings + totalShares,
       totalOutstanding,
       interestEarned,

@@ -12,10 +12,24 @@ const channelValidator = v.union(
   v.literal("system")
 );
 
+const accountTypeValidator = v.union(
+  v.literal("savings"),
+  v.literal("shares_long_term"),
+  v.literal("shares_short_term"),
+  v.literal("shares_capital")
+);
+
+const ACCOUNT_TYPE_LABEL: Record<string, string> = {
+  savings: "savings",
+  shares_long_term: "long-term shares",
+  shares_short_term: "short-term shares",
+  shares_capital: "capital shares",
+};
+
 export const deposit = mutation({
   args: {
     memberId: v.id("members"),
-    type: v.union(v.literal("savings"), v.literal("shares")),
+    type: accountTypeValidator,
     amount: v.number(),
     channel: channelValidator,
     receiptNumber: v.optional(v.string()),
@@ -44,8 +58,9 @@ export const deposit = mutation({
 
     await ctx.db.patch(account._id, { balance: balanceAfter });
 
-    const transactionType =
-      args.type === "shares" ? "share_purchase" : "deposit";
+    const isShares = args.type !== "savings";
+    const label = ACCOUNT_TYPE_LABEL[args.type];
+    const transactionType = isShares ? "share_purchase" : "deposit";
 
     await ctx.db.insert("transactions", {
       accountId: account._id,
@@ -56,7 +71,7 @@ export const deposit = mutation({
       balanceAfter,
       description:
         args.narration ??
-        `${args.type === "shares" ? "Share purchase" : "Deposit"} via ${args.channel}`,
+        `${isShares ? "Share purchase" : "Deposit"} via ${args.channel}`,
       referenceNumber: generateReferenceNumber(),
       processedBy: admin._id,
       channel: args.channel,
@@ -77,7 +92,7 @@ export const deposit = mutation({
       await notify(ctx, {
         recipientUserId: member.userId,
         title: "Deposit received",
-        message: `A deposit of KES ${args.amount.toLocaleString()} was credited to your ${args.type} account.`,
+        message: `A deposit of KES ${args.amount.toLocaleString()} was credited to your ${label} account.`,
         type: "payment_received",
         relatedEntityType: "account",
         relatedEntityId: account._id,
@@ -91,7 +106,7 @@ export const deposit = mutation({
 export const withdraw = mutation({
   args: {
     memberId: v.id("members"),
-    type: v.union(v.literal("savings"), v.literal("shares")),
+    type: accountTypeValidator,
     amount: v.number(),
     channel: channelValidator,
     receiptNumber: v.optional(v.string()),
@@ -126,8 +141,9 @@ export const withdraw = mutation({
 
     await ctx.db.patch(account._id, { balance: balanceAfter });
 
-    const transactionType =
-      args.type === "shares" ? "share_withdrawal" : "withdrawal";
+    const isShares = args.type !== "savings";
+    const label = ACCOUNT_TYPE_LABEL[args.type];
+    const transactionType = isShares ? "share_withdrawal" : "withdrawal";
 
     await ctx.db.insert("transactions", {
       accountId: account._id,
@@ -138,7 +154,7 @@ export const withdraw = mutation({
       balanceAfter,
       description:
         args.narration ??
-        `${args.type === "shares" ? "Share withdrawal" : "Withdrawal"} via ${args.channel}`,
+        `${isShares ? "Share withdrawal" : "Withdrawal"} via ${args.channel}`,
       referenceNumber: generateReferenceNumber(),
       processedBy: admin._id,
       channel: args.channel,
@@ -159,7 +175,7 @@ export const withdraw = mutation({
       await notify(ctx, {
         recipientUserId: member.userId,
         title: "Withdrawal processed",
-        message: `KES ${args.amount.toLocaleString()} was withdrawn from your ${args.type} account.`,
+        message: `KES ${args.amount.toLocaleString()} was withdrawn from your ${label} account.`,
         type: "account_update",
         relatedEntityType: "account",
         relatedEntityId: account._id,

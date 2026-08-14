@@ -83,6 +83,9 @@ function FinancialSummaryTab() {
     ? [
         { label: "Total savings", value: summary.totalSavings },
         { label: "Total shares", value: summary.totalShares },
+        { label: "— Long-term shares", value: summary.totalSharesLongTerm },
+        { label: "— Short-term shares", value: summary.totalSharesShortTerm },
+        { label: "— Capital shares", value: summary.totalSharesCapital },
         { label: "Total assets", value: summary.totalAssets },
         { label: "Outstanding loans", value: summary.totalOutstanding },
       ]

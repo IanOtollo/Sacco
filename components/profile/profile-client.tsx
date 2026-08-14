@@ -73,9 +73,9 @@ export function ProfileClient() {
             defaults={{
               postalAddress: member.postalAddress ?? "",
               residentialAddress: member.residentialAddress ?? "",
-              nextOfKinName: member.nextOfKinName,
-              nextOfKinPhone: member.nextOfKinPhone,
-              nextOfKinRelationship: member.nextOfKinRelationship,
+              nextOfKinName: member.nextOfKinName ?? "",
+              nextOfKinPhone: member.nextOfKinPhone ?? "",
+              nextOfKinRelationship: member.nextOfKinRelationship ?? "",
             }}
           />
         </div>

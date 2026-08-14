@@ -134,7 +134,7 @@ export const finalizeApproval = internalMutation({
 });
 
 // Runs as an action because rotating the auth credential requires action
-// context, same reason members.mutations.registerMember is an action.
+// context (same reason membershipApplications.mutations.submit is an action).
 export const approve = action({
   args: { requestId: v.id("passwordResetRequests") },
   returns: v.object({ nationalId: v.string(), password: v.string() }),

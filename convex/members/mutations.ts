@@ -1,17 +1,8 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, action } from "../_generated/server";
-import { createAccount } from "@convex-dev/auth/server";
-import { normalizeKenyanPhone } from "../../lib/phone";
-import { normalizeNationalId } from "../../lib/national-id";
-import { generateDefaultPassword, generateMemberNumber } from "./helpers";
-import {
-  requireAdmin,
-  requireAdminInAction,
-  requireSuperAdmin,
-  requireUser,
-} from "../authz";
+import { internalMutation, mutation } from "../_generated/server";
+import { generateMemberNumber } from "./helpers";
+import { requireAdmin, requireSuperAdmin, requireUser } from "../authz";
 import { logAction } from "../audit";
-import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
 
 const genderValidator = v.union(
@@ -37,70 +28,6 @@ const registerArgs = {
   nextOfKinPhone: v.string(),
   nextOfKinRelationship: v.string(),
 };
-
-// Runs as an action because creating the auth account (createAccount)
-// requires action context. The member row + accounts are created in a
-// follow-up internal mutation so they stay transactional.
-export const registerMember = action({
-  args: registerArgs,
-  returns: v.object({
-    memberNumber: v.string(),
-    nationalId: v.string(),
-    password: v.string(),
-  }),
-  handler: async (
-    ctx,
-    args
-  ): Promise<{ memberNumber: string; nationalId: string; password: string }> => {
-    const admin = await requireAdminInAction(ctx);
-
-    const phone = normalizeKenyanPhone(args.phoneNumber);
-    const nationalId = normalizeNationalId(args.nationalId);
-    const password = generateDefaultPassword();
-
-    const duplicate = await ctx.runQuery(internal.members.queries.findDuplicate, {
-      phoneNumber: phone,
-      nationalId,
-    });
-    if (duplicate?.field === "phone") {
-      throw new Error(
-        "A member with this phone number is already registered."
-      );
-    }
-    if (duplicate?.field === "nationalId") {
-      throw new Error(
-        "A member with this national ID is already registered."
-      );
-    }
-
-    const { user } = await createAccount(ctx, {
-      provider: "password",
-      account: { id: nationalId, secret: password },
-      profile: {
-        email: nationalId,
-        nationalId,
-        phone,
-        name: `${args.firstName} ${args.lastName}`,
-        role: "member",
-        isFirstLogin: true,
-        isActive: true,
-      },
-    });
-
-    const result = await ctx.runMutation(
-      internal.members.mutations.createMemberRecord,
-      {
-        ...args,
-        nationalId,
-        phoneNumber: phone,
-        userId: user._id,
-        registeredBy: admin._id,
-      }
-    );
-
-    return { memberNumber: result.memberNumber, nationalId, password };
-  },
-});
 
 export const createMemberRecord = internalMutation({
   args: {
@@ -156,10 +83,28 @@ export const createMemberRecord = internalMutation({
 
     await ctx.db.insert("accounts", {
       memberId,
-      type: "shares",
-      accountNumber: `SHR-${memberNumber}`,
+      type: "shares_capital",
+      accountNumber: `SHC-${memberNumber}`,
       balance: 0,
       minimumBalance: 5000,
+      isActive: true,
+    });
+
+    await ctx.db.insert("accounts", {
+      memberId,
+      type: "shares_long_term",
+      accountNumber: `SHL-${memberNumber}`,
+      balance: 0,
+      minimumBalance: 0,
+      isActive: true,
+    });
+
+    await ctx.db.insert("accounts", {
+      memberId,
+      type: "shares_short_term",
+      accountNumber: `SHS-${memberNumber}`,
+      balance: 0,
+      minimumBalance: 0,
       isActive: true,
     });
 

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { TransactionTable } from "@/components/accounts/transaction-table";
-import { Wallet, Banknote } from "lucide-react";
+import { Wallet, Banknote, CalendarClock, Landmark } from "lucide-react";
 
 export function AccountsPageClient() {
   const member = useQuery(api.members.queries.getMyMember);
@@ -31,7 +31,15 @@ export function AccountsPageClient() {
   }
 
   const savings = member.accounts.find((a) => a.type === "savings");
-  const shares = member.accounts.find((a) => a.type === "shares");
+  const sharesLongTerm = member.accounts.find((a) => a.type === "shares_long_term");
+  const sharesShortTerm = member.accounts.find((a) => a.type === "shares_short_term");
+  const sharesCapital = member.accounts.find((a) => a.type === "shares_capital");
+
+  const shareAccounts = [
+    { label: "Long-term shares", icon: CalendarClock, account: sharesLongTerm },
+    { label: "Short-term shares", icon: Banknote, account: sharesShortTerm },
+    { label: "Capital shares", icon: Landmark, account: sharesCapital },
+  ];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -45,7 +53,7 @@ export function AccountsPageClient() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="rounded-2xl border-border/50 p-6">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Wallet className="size-4" />
@@ -54,22 +62,24 @@ export function AccountsPageClient() {
           <p className="mt-1 font-mono text-xs text-muted-foreground">
             {savings?.accountNumber}
           </p>
-          <div className="mt-2 text-3xl font-bold">
+          <div className="mt-2 text-2xl font-bold">
             <CurrencyDisplay amount={savings?.balance ?? 0} />
           </div>
         </Card>
-        <Card className="rounded-2xl border-border/50 p-6">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Banknote className="size-4" />
-            <span className="text-sm">Shares</span>
-          </div>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            {shares?.accountNumber}
-          </p>
-          <div className="mt-2 text-3xl font-bold">
-            <CurrencyDisplay amount={shares?.balance ?? 0} />
-          </div>
-        </Card>
+        {shareAccounts.map(({ label, icon: Icon, account }) => (
+          <Card key={label} className="rounded-2xl border-border/50 p-6">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Icon className="size-4" />
+              <span className="text-sm">{label}</span>
+            </div>
+            <p className="mt-1 font-mono text-xs text-muted-foreground">
+              {account?.accountNumber}
+            </p>
+            <div className="mt-2 text-2xl font-bold">
+              <CurrencyDisplay amount={account?.balance ?? 0} />
+            </div>
+          </Card>
+        ))}
       </div>
 
       {savings && (
@@ -78,11 +88,14 @@ export function AccountsPageClient() {
           <TransactionTable accountId={savings._id} />
         </div>
       )}
-      {shares && (
-        <div>
-          <h2 className="mb-2 text-sm font-semibold">Shares statement</h2>
-          <TransactionTable accountId={shares._id} />
-        </div>
+      {shareAccounts.map(
+        ({ label, account }) =>
+          account && (
+            <div key={account._id}>
+              <h2 className="mb-2 text-sm font-semibold">{label} statement</h2>
+              <TransactionTable accountId={account._id} />
+            </div>
+          )
       )}
     </div>
   );

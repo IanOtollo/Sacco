@@ -37,6 +37,8 @@ import {
   Wallet,
   HandCoins,
   Banknote,
+  CalendarClock,
+  Landmark,
   FileText,
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -45,6 +47,13 @@ import {
 function initials(first: string, last: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
+
+const ACCOUNT_SECTIONS = [
+  { type: "savings" as const, label: "Savings", icon: Wallet },
+  { type: "shares_long_term" as const, label: "Long-term shares", icon: CalendarClock },
+  { type: "shares_short_term" as const, label: "Short-term shares", icon: Banknote },
+  { type: "shares_capital" as const, label: "Capital shares", icon: Landmark },
+];
 
 export function MemberDetailClient({ memberId }: { memberId: string }) {
   const member = useQuery(api.members.queries.getById, {
@@ -56,7 +65,7 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
   >(null);
   const [txnModal, setTxnModal] = useState<{
     mode: "deposit" | "withdraw";
-    accountType: "savings" | "shares";
+    accountType: (typeof ACCOUNT_SECTIONS)[number]["type"];
   } | null>(null);
 
   if (member === undefined) {
@@ -81,7 +90,9 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
   }
 
   const savings = member.accounts.find((a) => a.type === "savings");
-  const shares = member.accounts.find((a) => a.type === "shares");
+  const sharesTotal = member.accounts
+    .filter((a) => a.type !== "savings")
+    .reduce((sum, a) => sum + a.balance, 0);
 
   async function handleStatusChange() {
     if (!confirmAction || !member) return;
@@ -177,10 +188,10 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
             <Card className="rounded-2xl border-border/50 p-6">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Banknote className="size-4" />
-                <span className="text-sm">Shares balance</span>
+                <span className="text-sm">Total shares balance</span>
               </div>
               <div className="mt-2 text-2xl font-bold">
-                <CurrencyDisplay amount={shares?.balance ?? 0} />
+                <CurrencyDisplay amount={sharesTotal} />
               </div>
             </Card>
           </div>
@@ -192,8 +203,9 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
               <Detail
                 label="Gender"
                 value={
-                  member.gender.charAt(0).toUpperCase() +
-                  member.gender.slice(1)
+                  member.gender
+                    ? member.gender.charAt(0).toUpperCase() + member.gender.slice(1)
+                    : "—"
                 }
               />
               <Detail
@@ -221,108 +233,69 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
           <Card className="rounded-2xl border-border/50 p-6">
             <h3 className="text-sm font-semibold">Next of kin</h3>
             <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-              <Detail label="Name" value={member.nextOfKinName} />
-              <Detail label="Phone" value={member.nextOfKinPhone} />
+              <Detail label="Name" value={member.nextOfKinName ?? "—"} />
+              <Detail label="Phone" value={member.nextOfKinPhone ?? "—"} />
               <Detail
                 label="Relationship"
-                value={member.nextOfKinRelationship}
+                value={member.nextOfKinRelationship ?? "—"}
               />
             </dl>
           </Card>
         </TabsContent>
 
         <TabsContent value="accounts" className="mt-4 space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="rounded-2xl border-border/50 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Savings account
-                  </p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {savings?.accountNumber}
-                  </p>
-                </div>
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setTxnModal({ mode: "deposit", accountType: "savings" })
-                    }
-                  >
-                    <ArrowDownToLine className="size-3.5" />
-                    Deposit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setTxnModal({ mode: "withdraw", accountType: "savings" })
-                    }
-                  >
-                    <ArrowUpFromLine className="size-3.5" />
-                    Withdraw
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-2 text-2xl font-bold">
-                <CurrencyDisplay amount={savings?.balance ?? 0} />
-              </div>
-            </Card>
-            <Card className="rounded-2xl border-border/50 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Shares account
-                  </p>
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {shares?.accountNumber}
-                  </p>
-                </div>
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setTxnModal({ mode: "deposit", accountType: "shares" })
-                    }
-                  >
-                    <ArrowDownToLine className="size-3.5" />
-                    Deposit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setTxnModal({ mode: "withdraw", accountType: "shares" })
-                    }
-                  >
-                    <ArrowUpFromLine className="size-3.5" />
-                    Withdraw
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-2 text-2xl font-bold">
-                <CurrencyDisplay amount={shares?.balance ?? 0} />
-              </div>
-            </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ACCOUNT_SECTIONS.map(({ type, label, icon: Icon }) => {
+              const account = member.accounts.find((a) => a.type === type);
+              return (
+                <Card key={type} className="rounded-2xl border-border/50 p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Icon className="size-3.5" />
+                        {label}
+                      </div>
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        {account?.accountNumber}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xl font-bold">
+                    <CurrencyDisplay amount={account?.balance ?? 0} />
+                  </div>
+                  <div className="mt-3 flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setTxnModal({ mode: "deposit", accountType: type })}
+                    >
+                      <ArrowDownToLine className="size-3.5" />
+                      Deposit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setTxnModal({ mode: "withdraw", accountType: type })}
+                    >
+                      <ArrowUpFromLine className="size-3.5" />
+                      Withdraw
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
 
-          {savings && (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">
-                Savings statement
-              </h3>
-              <TransactionTable accountId={savings._id} />
-            </div>
-          )}
-          {shares && (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Shares statement</h3>
-              <TransactionTable accountId={shares._id} />
-            </div>
-          )}
+          {ACCOUNT_SECTIONS.map(({ type, label }) => {
+            const account = member.accounts.find((a) => a.type === type);
+            if (!account) return null;
+            return (
+              <div key={type}>
+                <h3 className="mb-2 text-sm font-semibold">{label} statement</h3>
+                <TransactionTable accountId={account._id} />
+              </div>
+            );
+          })}
         </TabsContent>
 
         <TabsContent value="loans" className="mt-4">
