@@ -1,0 +1,314 @@
+import { v } from "convex/values";
+import { query } from "../_generated/server";
+import { requireAdmin, requireUser } from "../authz";
+
+// Public, non-sensitive aggregate stats shown on the landing page.
+export const getLandingStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const [members, savingsAccounts, disbursedLoans] = await Promise.all([
+      ctx.db
+        .query("members")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect(),
+      ctx.db
+        .query("accounts")
+        .withIndex("by_member_type")
+        .filter((q) => q.eq(q.field("type"), "savings"))
+        .collect(),
+      ctx.db.query("loans").collect(),
+    ]);
+
+    const totalSavings = savingsAccounts.reduce(
+      (sum, account) => sum + account.balance,
+      0
+    );
+    const totalLoansDisbursed = disbursedLoans
+      .filter((loan) =>
+        ["disbursed", "active", "fully_paid", "defaulted", "written_off"].includes(
+          loan.status
+        )
+      )
+      .reduce((sum, loan) => sum + loan.amountDisbursed, 0);
+
+    return {
+      totalMembers: members.length,
+      totalSavings,
+      totalLoansDisbursed,
+    };
+  },
+});
+
+const COLLECTION_TYPES = new Set(["deposit", "share_purchase", "loan_repayment"]);
+
+function lastNMonths(n: number): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  return months;
+}
+
+export const getAdminDashboard = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const [members, accounts, loans, transactions, schedule] = await Promise.all([
+      ctx.db.query("members").collect(),
+      ctx.db.query("accounts").collect(),
+      ctx.db.query("loans").collect(),
+      ctx.db.query("transactions").collect(),
+      ctx.db.query("loanSchedule").collect(),
+    ]);
+
+    const activeMembers = members.filter((m) => m.status === "active").length;
+    const savingsPool = accounts
+      .filter((a) => a.type === "savings")
+      .reduce((s, a) => s + a.balance, 0);
+    const sharesPool = accounts
+      .filter((a) => a.type === "shares")
+      .reduce((s, a) => s + a.balance, 0);
+
+    const activeLoans = loans.filter((l) =>
+      ["active", "disbursed"].includes(l.status)
+    );
+    const outstandingTotal = activeLoans.reduce(
+      (s, l) => s + l.outstandingBalance,
+      0
+    );
+    const pendingApplications = loans.filter((l) =>
+      ["pending_guarantors", "pending_approval"].includes(l.status)
+    ).length;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const overdueLoanIds = new Set(
+      schedule
+        .filter(
+          (s) => s.dueDate < today && s.status !== "paid" && s.status !== "waived"
+        )
+        .map((s) => s.loanId)
+    );
+
+    const monthPrefix = new Date().toISOString().slice(0, 7);
+    const thisMonthCollections = transactions
+      .filter(
+        (t) =>
+          new Date(t._creationTime).toISOString().slice(0, 7) === monthPrefix &&
+          COLLECTION_TYPES.has(t.type)
+      )
+      .reduce((s, t) => s + t.amount, 0);
+
+    const months = lastNMonths(12);
+    const monthlyCollections = months.map((month) => {
+      const total = transactions
+        .filter(
+          (t) =>
+            new Date(t._creationTime).toISOString().slice(0, 7) === month &&
+            COLLECTION_TYPES.has(t.type)
+        )
+        .reduce((s, t) => s + t.amount, 0);
+      return { month, total };
+    });
+
+    const memberGrowth = months.map((month) => ({
+      month,
+      count: members.filter((m) => m.dateJoined.slice(0, 7) === month).length,
+    }));
+
+    const portfolioBuckets: Record<string, number> = {
+      active: 0,
+      fully_paid: 0,
+      defaulted: 0,
+      written_off: 0,
+    };
+    for (const l of loans) {
+      if (l.status === "disbursed") portfolioBuckets.active++;
+      else if (l.status in portfolioBuckets) portfolioBuckets[l.status]++;
+    }
+    const loanPortfolio = Object.entries(portfolioBuckets).map(([status, count]) => ({
+      status,
+      count,
+    }));
+
+    const recentTransactions = [...transactions]
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 10);
+    const memberById = new Map(members.map((m) => [m._id, m]));
+    const recentActivity = recentTransactions.map((t) => ({
+      _id: t._id,
+      description: t.description,
+      amount: t.amount,
+      type: t.type,
+      createdAt: t._creationTime,
+      memberName: (() => {
+        const m = memberById.get(t.memberId);
+        return m ? `${m.firstName} ${m.lastName}` : "—";
+      })(),
+    }));
+
+    return {
+      stats: {
+        activeMembers,
+        savingsPool,
+        sharesPool,
+        activeLoansCount: activeLoans.length,
+        outstandingTotal,
+        pendingApplications,
+        overdueLoans: overdueLoanIds.size,
+        thisMonthCollections,
+      },
+      monthlyCollections,
+      memberGrowth,
+      loanPortfolio,
+      recentActivity,
+    };
+  },
+});
+
+export const getMyDashboard = query({
+  args: {},
+  handler: async (ctx) => {
+    const caller = await requireUser(ctx);
+    if (!caller.memberId) return null;
+
+    const [accounts, loans, announcements, transactions] = await Promise.all([
+      ctx.db
+        .query("accounts")
+        .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
+        .collect(),
+      ctx.db
+        .query("loans")
+        .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
+        .collect(),
+      ctx.db
+        .query("announcements")
+        .withIndex("by_published", (q) => q.eq("isPublished", true))
+        .collect(),
+      ctx.db
+        .query("transactions")
+        .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
+        .order("desc")
+        .take(5),
+    ]);
+
+    const savings = accounts.find((a) => a.type === "savings");
+    const shares = accounts.find((a) => a.type === "shares");
+    const activeLoan = loans.find((l) => ["active", "disbursed"].includes(l.status));
+
+    let activeLoanSchedule = null;
+    if (activeLoan) {
+      const schedule = await ctx.db
+        .query("loanSchedule")
+        .withIndex("by_loan", (q) => q.eq("loanId", activeLoan._id))
+        .collect();
+      const nextDue = schedule
+        .filter((s) => s.status !== "paid")
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+      activeLoanSchedule = nextDue ?? null;
+    }
+
+    const now = new Date().toISOString();
+    const recentAnnouncements = announcements
+      .filter((a) => {
+        const audience =
+          a.targetAudience === "all" || a.targetAudience === "members";
+        const notExpired = !a.expiresAt || a.expiresAt > now;
+        return audience && notExpired;
+      })
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 3);
+
+    return {
+      savingsBalance: savings?.balance ?? 0,
+      sharesBalance: shares?.balance ?? 0,
+      activeLoan,
+      nextInstallment: activeLoanSchedule,
+      recentTransactions: transactions,
+      announcements: recentAnnouncements,
+    };
+  },
+});
+
+export const getFinancialSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const [accounts, loans, dividends] = await Promise.all([
+      ctx.db.query("accounts").collect(),
+      ctx.db.query("loans").collect(),
+      ctx.db.query("dividends").collect(),
+    ]);
+
+    const totalSavings = accounts
+      .filter((a) => a.type === "savings")
+      .reduce((s, a) => s + a.balance, 0);
+    const totalShares = accounts
+      .filter((a) => a.type === "shares")
+      .reduce((s, a) => s + a.balance, 0);
+    const totalOutstanding = loans
+      .filter((l) => ["active", "disbursed"].includes(l.status))
+      .reduce((s, l) => s + l.outstandingBalance, 0);
+    const interestEarned = loans
+      .filter((l) => ["active", "disbursed", "fully_paid"].includes(l.status))
+      .reduce((s, l) => s + l.interestAmount, 0);
+    const feesCollected = loans.reduce(
+      (s, l) => s + l.processingFee + l.insuranceFee,
+      0
+    );
+    const dividendsPaid = dividends
+      .filter((d) => d.status === "distributed")
+      .reduce((s, d) => s + d.totalPool, 0);
+
+    return {
+      totalSavings,
+      totalShares,
+      totalAssets: totalSavings + totalShares,
+      totalOutstanding,
+      interestEarned,
+      feesCollected,
+      dividendsPaid,
+    };
+  },
+});
+
+export const getTransactionReport = query({
+  args: {
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    type: v.optional(v.string()),
+  },
+  handler: async (ctx, { startDate, endDate, type }) => {
+    await requireAdmin(ctx);
+
+    let transactions = await ctx.db.query("transactions").collect();
+
+    if (type) {
+      transactions = transactions.filter((t) => t.type === type);
+    }
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      transactions = transactions.filter((t) => t._creationTime >= start);
+    }
+    if (endDate) {
+      const end = new Date(endDate).getTime() + 24 * 60 * 60 * 1000;
+      transactions = transactions.filter((t) => t._creationTime < end);
+    }
+
+    transactions.sort((a, b) => b._creationTime - a._creationTime);
+
+    const members = await ctx.db.query("members").collect();
+    const memberById = new Map(members.map((m) => [m._id, m]));
+
+    return transactions.slice(0, 500).map((t) => ({
+      ...t,
+      memberName: (() => {
+        const m = memberById.get(t.memberId);
+        return m ? `${m.firstName} ${m.lastName}` : "—";
+      })(),
+    }));
+  },
+});

@@ -1,0 +1,242 @@
+import { v } from "convex/values";
+import { internalMutation, mutation, action } from "../_generated/server";
+import { createAccount } from "@convex-dev/auth/server";
+import { normalizeKenyanPhone } from "../../lib/phone";
+import { generateDefaultPin, generateMemberNumber } from "./helpers";
+import { requireAdmin, requireAdminInAction, requireUser } from "../authz";
+import { logAction } from "../audit";
+import { internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
+
+const genderValidator = v.union(
+  v.literal("male"),
+  v.literal("female"),
+  v.literal("other")
+);
+
+const registerArgs = {
+  firstName: v.string(),
+  lastName: v.string(),
+  middleName: v.optional(v.string()),
+  nationalId: v.string(),
+  phoneNumber: v.string(),
+  email: v.optional(v.string()),
+  dateOfBirth: v.optional(v.string()),
+  gender: genderValidator,
+  occupation: v.optional(v.string()),
+  employer: v.optional(v.string()),
+  postalAddress: v.optional(v.string()),
+  residentialAddress: v.optional(v.string()),
+  nextOfKinName: v.string(),
+  nextOfKinPhone: v.string(),
+  nextOfKinRelationship: v.string(),
+};
+
+// Runs as an action because creating the auth account (createAccount)
+// requires action context. The member row + accounts are created in a
+// follow-up internal mutation so they stay transactional.
+export const registerMember = action({
+  args: registerArgs,
+  returns: v.object({
+    memberNumber: v.string(),
+    phone: v.string(),
+    pin: v.string(),
+  }),
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ memberNumber: string; phone: string; pin: string }> => {
+    const admin = await requireAdminInAction(ctx);
+
+    const phone = normalizeKenyanPhone(args.phoneNumber);
+    const pin = generateDefaultPin();
+
+    const { user } = await createAccount(ctx, {
+      provider: "password",
+      account: { id: phone, secret: pin },
+      profile: {
+        email: phone,
+        phone,
+        name: `${args.firstName} ${args.lastName}`,
+        role: "member",
+        isFirstLogin: true,
+        isActive: true,
+      },
+    });
+
+    const result = await ctx.runMutation(
+      internal.members.mutations.createMemberRecord,
+      {
+        ...args,
+        phoneNumber: phone,
+        userId: user._id,
+        registeredBy: admin._id,
+      }
+    );
+
+    return { memberNumber: result.memberNumber, phone, pin };
+  },
+});
+
+export const createMemberRecord = internalMutation({
+  args: {
+    ...registerArgs,
+    phoneNumber: v.string(),
+    userId: v.id("users"),
+    registeredBy: v.id("users"),
+  },
+  returns: v.object({
+    memberId: v.id("members"),
+    memberNumber: v.string(),
+  }),
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ memberId: Id<"members">; memberNumber: string }> => {
+    const memberNumber = await generateMemberNumber(ctx);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const memberId = await ctx.db.insert("members", {
+      memberNumber,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      middleName: args.middleName,
+      nationalId: args.nationalId,
+      phoneNumber: args.phoneNumber,
+      email: args.email,
+      dateOfBirth: args.dateOfBirth,
+      gender: args.gender,
+      occupation: args.occupation,
+      employer: args.employer,
+      postalAddress: args.postalAddress,
+      residentialAddress: args.residentialAddress,
+      nextOfKinName: args.nextOfKinName,
+      nextOfKinPhone: args.nextOfKinPhone,
+      nextOfKinRelationship: args.nextOfKinRelationship,
+      dateJoined: today,
+      status: "active",
+      userId: args.userId,
+      registeredBy: args.registeredBy,
+    });
+
+    await ctx.db.patch(args.userId, { memberId });
+
+    await ctx.db.insert("accounts", {
+      memberId,
+      type: "savings",
+      accountNumber: `SAV-${memberNumber}`,
+      balance: 0,
+      minimumBalance: 0,
+      isActive: true,
+    });
+
+    await ctx.db.insert("accounts", {
+      memberId,
+      type: "shares",
+      accountNumber: `SHR-${memberNumber}`,
+      balance: 0,
+      minimumBalance: 5000,
+      isActive: true,
+    });
+
+    await logAction(ctx, {
+      userId: args.registeredBy,
+      action: "member.register",
+      entityType: "member",
+      entityId: memberId,
+      details: { memberNumber, name: `${args.firstName} ${args.lastName}` },
+    });
+
+    return { memberId, memberNumber };
+  },
+});
+
+export const updateStatus = mutation({
+  args: {
+    memberId: v.id("members"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("suspended"),
+      v.literal("dormant"),
+      v.literal("exited")
+    ),
+  },
+  handler: async (ctx, { memberId, status }) => {
+    const admin = await requireAdmin(ctx);
+    const member = await ctx.db.get(memberId);
+    if (!member) throw new Error("Member not found");
+
+    await ctx.db.patch(memberId, { status });
+
+    if (member.userId) {
+      await ctx.db.patch(member.userId, { isActive: status === "active" });
+    }
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "member.statusChange",
+      entityType: "member",
+      entityId: memberId,
+      details: { from: member.status, to: status },
+    });
+  },
+});
+
+const SELF_EDITABLE_FIELDS = [
+  "postalAddress",
+  "residentialAddress",
+  "nextOfKinName",
+  "nextOfKinPhone",
+  "nextOfKinRelationship",
+] as const;
+
+export const update = mutation({
+  args: {
+    memberId: v.id("members"),
+    patch: v.object({
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      middleName: v.optional(v.string()),
+      email: v.optional(v.string()),
+      occupation: v.optional(v.string()),
+      employer: v.optional(v.string()),
+      postalAddress: v.optional(v.string()),
+      residentialAddress: v.optional(v.string()),
+      nextOfKinName: v.optional(v.string()),
+      nextOfKinPhone: v.optional(v.string()),
+      nextOfKinRelationship: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, { memberId, patch }) => {
+    const caller = await requireUser(ctx);
+    const member = await ctx.db.get(memberId);
+    if (!member) throw new Error("Member not found");
+
+    const isSelf = caller.role === "member" && caller.memberId === memberId;
+    const isAdmin = caller.role === "admin" || caller.role === "super_admin";
+    if (!isSelf && !isAdmin) {
+      throw new Error("Not authorized");
+    }
+
+    if (isSelf) {
+      const disallowed = Object.keys(patch).filter(
+        (k) => !(SELF_EDITABLE_FIELDS as readonly string[]).includes(k)
+      );
+      if (disallowed.length > 0) {
+        throw new Error(
+          "You can only update your address and next of kin details."
+        );
+      }
+    }
+
+    await ctx.db.patch(memberId, patch);
+
+    await logAction(ctx, {
+      userId: caller._id,
+      action: "member.update",
+      entityType: "member",
+      entityId: memberId,
+      details: patch,
+    });
+  },
+});
