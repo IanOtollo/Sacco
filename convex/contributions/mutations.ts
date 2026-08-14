@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { requireAdmin } from "../authz";
+import { requireTreasurer } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
@@ -11,7 +11,7 @@ export const createType = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
 
     const existing = await ctx.db
       .query("contributionTypes")
@@ -41,7 +41,7 @@ export const createType = mutation({
 export const setTypeActive = mutation({
   args: { typeId: v.id("contributionTypes"), isActive: v.boolean() },
   handler: async (ctx, { typeId, isActive }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
     await ctx.db.patch(typeId, { isActive });
 
     await logAction(ctx, {
@@ -63,7 +63,7 @@ export const record = mutation({
     receiptNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
 
     if (args.amount <= 0) {
       throw new Error("Enter an amount greater than zero");

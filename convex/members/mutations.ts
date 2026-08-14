@@ -3,7 +3,12 @@ import { internalMutation, mutation, action } from "../_generated/server";
 import { createAccount } from "@convex-dev/auth/server";
 import { normalizeKenyanPhone } from "../../lib/phone";
 import { generateDefaultPin, generateMemberNumber } from "./helpers";
-import { requireAdmin, requireAdminInAction, requireUser } from "../authz";
+import {
+  requireAdmin,
+  requireAdminInAction,
+  requireSuperAdmin,
+  requireUser,
+} from "../authz";
 import { logAction } from "../audit";
 import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
@@ -252,6 +257,75 @@ export const update = mutation({
       entityType: "member",
       entityId: memberId,
       details: patch,
+    });
+  },
+});
+
+const committeeRoleValidator = v.union(
+  v.literal("chairman"),
+  v.literal("deputy_chairman"),
+  v.literal("secretary"),
+  v.literal("treasurer")
+);
+
+const TOP_OFFICES = new Set(["chairman", "deputy_chairman"]);
+
+// Governance-sensitive — only a super admin can appoint or remove chairman,
+// deputy chairman, secretary, or treasurer. Chairman/deputy are promoted to
+// role "super_admin" (matching the spec's "chairman = super_admin, can do
+// everything") but keep their linked member profile; secretary/treasurer
+// stay role "member" and get extra modules unlocked in their portal.
+export const setCommitteeRole = mutation({
+  args: {
+    memberId: v.id("members"),
+    committeeRole: v.optional(committeeRoleValidator),
+  },
+  handler: async (ctx, { memberId, committeeRole }) => {
+    const admin = await requireSuperAdmin(ctx);
+    const member = await ctx.db.get(memberId);
+    if (!member) throw new Error("Member not found");
+    if (!member.userId) {
+      throw new Error("This member has no linked login account");
+    }
+
+    // Only one chairman and one deputy chairman at a time — stepping the
+    // previous holder down when someone new is appointed.
+    if (committeeRole && TOP_OFFICES.has(committeeRole)) {
+      const previousHolder = await ctx.db
+        .query("members")
+        .withIndex("by_committeeRole", (q) => q.eq("committeeRole", committeeRole))
+        .first();
+      if (previousHolder && previousHolder._id !== memberId) {
+        await ctx.db.patch(previousHolder._id, { committeeRole: undefined });
+        if (previousHolder.userId) {
+          await ctx.db.patch(previousHolder.userId, {
+            committeeRole: undefined,
+            role: "member",
+          });
+        }
+      }
+    }
+
+    const wasTopOffice = member.committeeRole ? TOP_OFFICES.has(member.committeeRole) : false;
+    const willBeTopOffice = committeeRole ? TOP_OFFICES.has(committeeRole) : false;
+
+    await ctx.db.patch(memberId, { committeeRole });
+
+    if (willBeTopOffice) {
+      await ctx.db.patch(member.userId, { committeeRole, role: "super_admin" });
+    } else if (wasTopOffice) {
+      // Stepping down from chairman/deputy — back to an ordinary member.
+      await ctx.db.patch(member.userId, { committeeRole, role: "member" });
+    } else {
+      await ctx.db.patch(member.userId, { committeeRole });
+    }
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "member.setCommitteeRole",
+      entityType: "member",
+      entityId: memberId,
+      details: { committeeRole: committeeRole ?? null },
     });
   },
 });

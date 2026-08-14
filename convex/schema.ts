@@ -18,6 +18,18 @@ export default defineSchema({
     memberId: v.optional(v.id("members")),
     isFirstLogin: v.optional(v.boolean()),
     isActive: v.optional(v.boolean()),
+    // Sacco governance office held, if any. Denormalized from
+    // members.committeeRole for fast authorization checks without a join.
+    // Chairman/deputy also carry role "super_admin"; secretary/treasurer
+    // keep role "member" with extra portal modules unlocked.
+    committeeRole: v.optional(
+      v.union(
+        v.literal("chairman"),
+        v.literal("deputy_chairman"),
+        v.literal("secretary"),
+        v.literal("treasurer")
+      )
+    ),
   })
     .index("email", ["email"])
     .index("phone", ["phone"]),
@@ -101,13 +113,24 @@ export default defineSchema({
     ),
     userId: v.optional(v.id("users")),
     registeredBy: v.id("users"),
+    // Sacco governance office held, if any. Source of truth — mirrored to
+    // users.committeeRole whenever this changes. See setCommitteeRole.
+    committeeRole: v.optional(
+      v.union(
+        v.literal("chairman"),
+        v.literal("deputy_chairman"),
+        v.literal("secretary"),
+        v.literal("treasurer")
+      )
+    ),
   })
     .index("by_memberNumber", ["memberNumber"])
     .index("by_nationalId", ["nationalId"])
     .index("by_phone", ["phoneNumber"])
     .index("by_email", ["email"])
     .index("by_status", ["status"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_committeeRole", ["committeeRole"]),
 
   // ─── ACCOUNTS ─────────────────────────────────────
   accounts: defineTable({

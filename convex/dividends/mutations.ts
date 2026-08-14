@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { requireAdmin } from "../authz";
+import { requireTreasurer } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
@@ -16,7 +16,7 @@ export const declare = mutation({
     ratePercent: v.number(),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
 
     const dividendId = await ctx.db.insert("dividends", {
       financialYear: args.financialYear,
@@ -65,7 +65,7 @@ export const declare = mutation({
 export const distribute = mutation({
   args: { dividendId: v.id("dividends") },
   handler: async (ctx, { dividendId }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
     const dividend = await ctx.db.get(dividendId);
     if (!dividend) throw new Error("Dividend not found");
     if (dividend.status !== "declared") {
@@ -150,7 +150,7 @@ export const distribute = mutation({
 export const cancel = mutation({
   args: { dividendId: v.id("dividends") },
   handler: async (ctx, { dividendId }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireTreasurer(ctx);
     const dividend = await ctx.db.get(dividendId);
     if (!dividend) throw new Error("Dividend not found");
     if (dividend.status !== "declared") {

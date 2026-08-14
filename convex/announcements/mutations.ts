@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { requireAdmin } from "../authz";
+import { requireSecretary } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 
@@ -24,7 +24,7 @@ export const create = mutation({
     expiresAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSecretary(ctx);
     const id = await ctx.db.insert("announcements", {
       ...args,
       isPublished: false,
@@ -53,7 +53,7 @@ export const update = mutation({
     expiresAt: v.optional(v.string()),
   },
   handler: async (ctx, { announcementId, ...args }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSecretary(ctx);
     await ctx.db.patch(announcementId, args);
 
     await logAction(ctx, {
@@ -69,7 +69,7 @@ export const update = mutation({
 export const setPublished = mutation({
   args: { announcementId: v.id("announcements"), isPublished: v.boolean() },
   handler: async (ctx, { announcementId, isPublished }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSecretary(ctx);
     const announcement = await ctx.db.get(announcementId);
     if (!announcement) throw new Error("Announcement not found");
 
@@ -118,7 +118,7 @@ export const setPublished = mutation({
 export const remove = mutation({
   args: { announcementId: v.id("announcements") },
   handler: async (ctx, { announcementId }) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSecretary(ctx);
     await ctx.db.delete(announcementId);
 
     await logAction(ctx, {

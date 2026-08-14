@@ -1,10 +1,10 @@
 import { query } from "../_generated/server";
-import { requireAdmin, requireUser } from "../authz";
+import { requireSecretary, requireUser } from "../authz";
 
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireSecretary(ctx);
     const announcements = await ctx.db.query("announcements").collect();
     return announcements.sort((a, b) => b._creationTime - a._creationTime);
   },

@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireAdmin, requireUser } from "../authz";
+import { requireTreasurer, requireUser } from "../authz";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     const dividends = await ctx.db.query("dividends").collect();
     return dividends.sort((a, b) => b._creationTime - a._creationTime);
   },
@@ -14,7 +14,7 @@ export const list = query({
 export const getPayouts = query({
   args: { dividendId: v.id("dividends") },
   handler: async (ctx, { dividendId }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     const payouts = await ctx.db
       .query("dividendPayouts")
       .withIndex("by_dividend", (q) => q.eq("dividendId", dividendId))

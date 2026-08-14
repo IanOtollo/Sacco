@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery, query } from "../_generated/server";
-import { requireAdmin, requireUser } from "../authz";
+import { requireTreasurer, requireUser } from "../authz";
 
 // Internal-only: used by the registerMember action to reject duplicate
 // phone numbers / national IDs with a clear error before an auth account
@@ -39,7 +39,7 @@ export const list = query({
     joinedEnd: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
 
     let members = args.status
       ? await ctx.db

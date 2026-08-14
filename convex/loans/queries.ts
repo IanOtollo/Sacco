@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireAdmin, requireMember, requireUser } from "../authz";
+import { requireMember, requireTreasurer, requireUser } from "../authz";
 
 export const listAll = query({
   args: {
@@ -9,7 +9,7 @@ export const listAll = query({
     endDate: v.optional(v.string()),
   },
   handler: async (ctx, { status, startDate, endDate }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     let loans = status
       ? await ctx.db
           .query("loans")

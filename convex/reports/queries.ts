@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireAdmin, requireUser } from "../authz";
+import { requireAdmin, requireTreasurer, requireUser } from "../authz";
 
 // Public, non-sensitive aggregate stats shown on the landing page.
 export const getLandingStats = query({
@@ -238,7 +238,7 @@ export const getFinancialSummary = query({
     endDate: v.optional(v.string()),
   },
   handler: async (ctx, { startDate, endDate }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
 
     const [accounts, loans, dividends] = await Promise.all([
       ctx.db.query("accounts").collect(),
@@ -293,7 +293,7 @@ export const getTransactionReport = query({
     type: v.optional(v.string()),
   },
   handler: async (ctx, { startDate, endDate, type }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
 
     let transactions = await ctx.db.query("transactions").collect();
 

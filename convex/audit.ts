@@ -1,5 +1,6 @@
 import { MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { notify } from "./notifications/helpers";
 
 export async function logAction(
   ctx: MutationCtx,
@@ -17,6 +18,33 @@ export async function logAction(
     entityType: args.entityType,
     entityId: args.entityId,
     details: JSON.stringify(args.details ?? {}),
+  });
+
+  await notifyChairmanIfDeputyAction(ctx, args);
+}
+
+// Oversight: whenever the deputy chairman makes or edits something, the
+// chairman is notified so nothing happens without their awareness.
+async function notifyChairmanIfDeputyAction(
+  ctx: MutationCtx,
+  args: { userId: Id<"users">; action: string; entityType: string; entityId: string }
+) {
+  const actor = await ctx.db.get(args.userId);
+  if (!actor || actor.committeeRole !== "deputy_chairman") return;
+
+  const chairman = await ctx.db
+    .query("users")
+    .filter((q) => q.eq(q.field("committeeRole"), "chairman"))
+    .first();
+  if (!chairman) return;
+
+  await notify(ctx, {
+    recipientUserId: chairman._id,
+    title: "Deputy chairman action",
+    message: `${actor.name ?? "The deputy chairman"} performed "${args.action}" on ${args.entityType}.`,
+    type: "system",
+    relatedEntityType: args.entityType,
+    relatedEntityId: args.entityId,
   });
 }
 

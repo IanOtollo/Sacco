@@ -7,6 +7,7 @@ import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { ROUTES, type Role, portalHomeForRole } from "@/lib/constants";
 import { ForcePinChange } from "@/components/auth/force-pin-change";
+import { IdleLogoutWatcher } from "@/components/auth/idle-logout-watcher";
 import { Loader2 } from "lucide-react";
 
 export function PortalGate({
@@ -64,5 +65,10 @@ export function PortalGate({
     return <ForcePinChange />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <IdleLogoutWatcher />
+      {children}
+    </>
+  );
 }

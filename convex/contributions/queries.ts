@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireAdmin, requireUser } from "../authz";
+import { requireTreasurer, requireUser } from "../authz";
 
 export const listTypes = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     const types = await ctx.db.query("contributionTypes").collect();
 
     const withStats = await Promise.all(
@@ -32,7 +32,7 @@ export const listTypes = query({
 export const getType = query({
   args: { typeId: v.id("contributionTypes") },
   handler: async (ctx, { typeId }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     return await ctx.db.get(typeId);
   },
 });
@@ -40,7 +40,7 @@ export const getType = query({
 export const listByType = query({
   args: { typeId: v.id("contributionTypes") },
   handler: async (ctx, { typeId }) => {
-    await requireAdmin(ctx);
+    await requireTreasurer(ctx);
     const contributions = await ctx.db
       .query("contributions")
       .withIndex("by_type", (q) => q.eq("contributionTypeId", typeId))
