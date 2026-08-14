@@ -3,7 +3,7 @@ import {
   Users,
   UserPlus,
   HandCoins,
-  Layers,
+  Sprout,
   Wallet,
   PiggyBank,
   BarChart3,
@@ -28,7 +28,7 @@ export const adminSidebarNav: NavItem[] = [
   { label: "Members", href: ROUTES.ADMIN_MEMBERS, icon: Users },
   { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
   { label: "Loans", href: ROUTES.ADMIN_LOANS, icon: HandCoins },
-  { label: "Loan Products", href: ROUTES.ADMIN_LOAN_PRODUCTS, icon: Layers },
+  { label: "Projects", href: ROUTES.ADMIN_PROJECTS, icon: Sprout },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
   { label: "Dividends", href: ROUTES.ADMIN_DIVIDENDS, icon: PiggyBank },
   { label: "Reports", href: ROUTES.ADMIN_REPORTS, icon: BarChart3 },
@@ -46,7 +46,7 @@ export const adminBottomBarNav: NavItem[] = [
 
 export const adminMoreSheetNav: NavItem[] = [
   { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
-  { label: "Loan Products", href: ROUTES.ADMIN_LOAN_PRODUCTS, icon: Layers },
+  { label: "Projects", href: ROUTES.ADMIN_PROJECTS, icon: Sprout },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
   { label: "Dividends", href: ROUTES.ADMIN_DIVIDENDS, icon: PiggyBank },
   { label: "Announcements", href: ROUTES.ADMIN_ANNOUNCEMENTS, icon: Megaphone },
@@ -59,6 +59,7 @@ export const memberSidebarNav: NavItem[] = [
   { label: "Accounts", href: ROUTES.PORTAL_ACCOUNTS, icon: Wallet },
   { label: "Loans", href: ROUTES.PORTAL_LOANS, icon: HandCoins },
   { label: "Guarantors", href: ROUTES.PORTAL_GUARANTORS, icon: Users },
+  { label: "Projects", href: ROUTES.PORTAL_PROJECTS, icon: Sprout },
   { label: "Updates", href: ROUTES.PORTAL_UPDATES, icon: MessageSquare },
   { label: "Profile", href: ROUTES.PORTAL_PROFILE, icon: User },
 ];

@@ -479,6 +479,27 @@ export default defineSchema({
     .index("by_audience", ["targetAudience"])
     .index("by_priority", ["priority"]),
 
+  // ─── SACCO PROJECTS ───────────────────────────────
+  // Ventures the Sacco itself runs as an organisation (e.g. chicken coops,
+  // farming) — separate from member loans/contributions, kept purely for
+  // record-keeping.
+  projects: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    status: v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("on_hold")
+    ),
+    startDate: v.optional(v.string()),
+    investmentAmount: v.optional(v.float64()),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+  })
+    .index("by_status", ["status"]),
+
   // ─── AUDIT LOG ────────────────────────────────────
   auditLog: defineTable({
     userId: v.id("users"),

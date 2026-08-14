@@ -43,6 +43,8 @@ import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
 import type * as passwordResets_mutations from "../passwordResets/mutations.js";
 import type * as passwordResets_queries from "../passwordResets/queries.js";
+import type * as projects_mutations from "../projects/mutations.js";
+import type * as projects_queries from "../projects/queries.js";
 import type * as reports_queries from "../reports/queries.js";
 import type * as seed from "../seed.js";
 import type * as settings_definitions from "../settings/definitions.js";
@@ -92,6 +94,8 @@ declare const fullApi: ApiFromModules<{
   "notifications/queries": typeof notifications_queries;
   "passwordResets/mutations": typeof passwordResets_mutations;
   "passwordResets/queries": typeof passwordResets_queries;
+  "projects/mutations": typeof projects_mutations;
+  "projects/queries": typeof projects_queries;
   "reports/queries": typeof reports_queries;
   seed: typeof seed;
   "settings/definitions": typeof settings_definitions;
