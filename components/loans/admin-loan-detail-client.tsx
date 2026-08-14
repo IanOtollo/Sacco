@@ -116,12 +116,19 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
               {loan.loanNumber}
             </p>
             {loan.member && (
-              <Link
-                href={`/admin/members/${loan.member._id}`}
-                className="mt-1 inline-block text-sm text-primary hover:underline"
-              >
-                {loan.member.firstName} {loan.member.lastName} ({loan.member.memberNumber})
-              </Link>
+              <div className="mt-1 flex items-center gap-2">
+                <Link
+                  href={`/admin/members/${loan.member._id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {loan.member.firstName} {loan.member.lastName} ({loan.member.memberNumber})
+                </Link>
+                {loan.member.isNonMember && (
+                  <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
+                    Non-member
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <StatusBadge status={loan.status} />
@@ -215,6 +222,18 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         </Card>
       )}
 
+      {loan.collateralDescription && (
+        <Card className="rounded-2xl border-border/50 p-6">
+          <h2 className="text-sm font-semibold">Collateral</h2>
+          <p className="mt-2 text-sm">{loan.collateralDescription}</p>
+          {typeof loan.collateralValue === "number" && loan.collateralValue > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Estimated value: <CurrencyDisplay amount={loan.collateralValue} />
+            </p>
+          )}
+        </Card>
+      )}
+
       {loan.schedule.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-semibold">Repayment schedule</h2>
@@ -275,7 +294,11 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         open={disburseConfirm}
         onOpenChange={setDisburseConfirm}
         title="Disburse this loan?"
-        description="This credits the member's savings account and generates the repayment schedule immediately."
+        description={
+          loan.member?.isNonMember
+            ? "This generates the repayment schedule immediately. Hand over the disbursed amount directly — there's no internal account to credit for a non-member."
+            : "This credits the member's savings account and generates the repayment schedule immediately."
+        }
         confirmLabel="Disburse"
         onConfirm={handleDisburse}
       />
@@ -294,6 +317,7 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         onOpenChange={setPayOpen}
         loanId={loan._id}
         monthlyRepayment={loan.monthlyRepayment}
+        isNonMember={loan.member?.isNonMember}
       />
     </div>
   );

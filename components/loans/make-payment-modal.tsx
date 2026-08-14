@@ -41,11 +41,13 @@ export function MakePaymentModal({
   onOpenChange,
   loanId,
   monthlyRepayment,
+  isNonMember,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loanId: Id<"loans">;
   monthlyRepayment: number;
+  isNonMember?: boolean;
 }) {
   const repay = useMutation(api.loans.mutations.repay);
   const [pendingAmount, setPendingAmount] = useState<string | null>(null);
@@ -78,8 +80,9 @@ export function MakePaymentModal({
           <DialogHeader>
             <DialogTitle>Make a repayment</DialogTitle>
             <DialogDescription>
-              This debits your savings account and applies to the oldest
-              unpaid installment first.
+              {isNonMember
+                ? "Record cash/M-Pesa/bank funds received and apply them to the oldest unpaid installment first."
+                : "This debits your savings account and applies to the oldest unpaid installment first."}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -114,7 +117,9 @@ export function MakePaymentModal({
         title="Confirm repayment"
         description={
           pendingAmount
-            ? `This debits KES ${Number(pendingAmount).toLocaleString()} from the member's savings account and applies it to this loan. This cannot be undone.`
+            ? isNonMember
+              ? `This applies KES ${Number(pendingAmount).toLocaleString()} received to this loan. This cannot be undone.`
+              : `This debits KES ${Number(pendingAmount).toLocaleString()} from the member's savings account and applies it to this loan. This cannot be undone.`
             : ""
         }
         confirmLabel="Confirm repayment"

@@ -37,7 +37,7 @@ export default async function LandingPage() {
           its column on desktop so it stays put while the page scrolls (one
           native scrollbar at the outer window edge, not a second one
           floating between the two columns). */}
-      <div className="order-1 flex items-center justify-center border-b border-border px-4 py-12 sm:px-6 lg:order-2 lg:sticky lg:top-0 lg:h-screen lg:w-[440px] lg:shrink-0 lg:self-start lg:border-b-0 lg:border-l lg:px-8 lg:py-0">
+      <div className="order-1 flex items-center justify-center border-b border-border px-4 py-12 sm:px-6 lg:order-2 lg:sticky lg:top-0 lg:h-screen lg:w-[440px] lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-l lg:px-8 lg:py-10">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3">
             <Link href="/" className="flex items-center justify-center">

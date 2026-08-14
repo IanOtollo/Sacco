@@ -26,6 +26,10 @@ export const list = query({
           .collect()
       : await ctx.db.query("members").collect();
 
+    // Non-member loan borrowers are lightweight records for loan tracking
+    // only — they never show up in the Sacco's actual membership roster.
+    members = members.filter((m) => !m.isNonMember);
+
     if (args.search) {
       const term = args.search.toLowerCase();
       members = members.filter((m) =>
@@ -104,6 +108,7 @@ export const searchGuarantorCandidates = query({
 
     const term = search?.toLowerCase().trim();
     const filtered = active.filter((m) => {
+      if (m.isNonMember) return false;
       if (m._id === caller.memberId) return false;
       if (!term) return true;
       return `${m.firstName} ${m.lastName} ${m.memberNumber}`

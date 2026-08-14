@@ -5,6 +5,123 @@ import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateLoanNumber, calculateLoanSchedule } from "./helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
+import { generateNonMemberNumber } from "../members/helpers";
+import { normalizeKenyanPhone } from "../../lib/phone";
+import { normalizeNationalId } from "../../lib/national-id";
+
+// Admin-issued loan for someone who is not a Sacco member — identified by
+// name, phone, and National ID rather than a member picker. Skips the
+// guarantor workflow entirely (guarantors are fellow members vouching;
+// non-members provide collateral instead) but still goes through the same
+// approve → disburse steps as any other loan for a second set of eyes on
+// the money movement.
+export const issueNonMemberLoan = mutation({
+  args: {
+    firstName: v.string(),
+    lastName: v.string(),
+    phoneNumber: v.string(),
+    nationalId: v.string(),
+    productId: v.id("loanProducts"),
+    principalAmount: v.number(),
+    termMonths: v.number(),
+    purpose: v.string(),
+    collateralDescription: v.string(),
+    collateralValue: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const product = await ctx.db.get(args.productId);
+    if (!product || !product.isActive) {
+      throw new Error("Loan product not available");
+    }
+    if (
+      args.principalAmount < product.minimumAmount ||
+      args.principalAmount > product.maximumAmount
+    ) {
+      throw new Error(
+        `Amount must be between KES ${product.minimumAmount.toLocaleString()} and KES ${product.maximumAmount.toLocaleString()}`
+      );
+    }
+    if (
+      args.termMonths < product.minimumTermMonths ||
+      args.termMonths > product.maximumTermMonths
+    ) {
+      throw new Error(
+        `Term must be between ${product.minimumTermMonths} and ${product.maximumTermMonths} months`
+      );
+    }
+    if (!args.collateralDescription.trim()) {
+      throw new Error("Collateral description is required for non-member loans");
+    }
+
+    const phone = normalizeKenyanPhone(args.phoneNumber);
+    const nationalId = normalizeNationalId(args.nationalId);
+
+    // Reuse an existing person's record (member or a prior non-member
+    // borrower) if the National ID already matches one, rather than
+    // creating a duplicate — so repeat borrowers accumulate one history.
+    const existing = await ctx.db
+      .query("members")
+      .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
+      .first();
+
+    let memberId = existing?._id;
+    if (!memberId) {
+      const memberNumber = await generateNonMemberNumber(ctx);
+      memberId = await ctx.db.insert("members", {
+        memberNumber,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        nationalId,
+        phoneNumber: phone,
+        dateJoined: new Date().toISOString().slice(0, 10),
+        status: "active",
+        registeredBy: admin._id,
+        isNonMember: true,
+      });
+    }
+
+    const loanNumber = await generateLoanNumber(ctx, product.code);
+
+    const loanId = await ctx.db.insert("loans", {
+      loanNumber,
+      memberId,
+      productId: product._id,
+      principalAmount: args.principalAmount,
+      interestAmount: 0,
+      totalRepayable: args.principalAmount,
+      processingFee: 0,
+      insuranceFee: 0,
+      amountDisbursed: 0,
+      monthlyRepayment: 0,
+      termMonths: BigInt(args.termMonths),
+      interestRate: product.interestRate,
+      purpose: args.purpose,
+      totalPaid: 0,
+      outstandingBalance: 0,
+      arrearsAmount: 0,
+      status: "pending_approval",
+      appliedAt: new Date().toISOString(),
+      collateralDescription: args.collateralDescription,
+      collateralValue: args.collateralValue,
+    });
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "loan.issueNonMember",
+      entityType: "loan",
+      entityId: loanId,
+      details: {
+        loanNumber,
+        amount: args.principalAmount,
+        borrowerName: `${args.firstName} ${args.lastName}`,
+      },
+    });
+
+    return { loanId, loanNumber, memberId };
+  },
+});
 
 export const apply = mutation({
   args: {
@@ -376,6 +493,9 @@ export const disburse = mutation({
       });
     }
 
+    // Non-member borrowers have no savings account to credit — they're
+    // handed the disbursed amount directly (cash/mpesa/bank), so there's
+    // nothing to post here beyond the loan record + audit log below.
     const savingsAccount = await ctx.db
       .query("accounts")
       .withIndex("by_member_type", (q) =>
@@ -449,14 +569,16 @@ export const repay = mutation({
     }
     if (amount <= 0) throw new Error("Amount must be greater than zero");
 
+    // Non-member borrowers have no savings account — their repayments are
+    // fresh cash/mpesa/bank funds applied straight to the loan, not a debit
+    // against an internal balance the way a member's repayment works.
     const savingsAccount = await ctx.db
       .query("accounts")
       .withIndex("by_member_type", (q) =>
         q.eq("memberId", loan.memberId).eq("type", "savings")
       )
       .first();
-    if (!savingsAccount) throw new Error("Savings account not found");
-    if (savingsAccount.balance < amount) {
+    if (savingsAccount && savingsAccount.balance < amount) {
       throw new Error("Insufficient savings balance to make this repayment");
     }
 
@@ -485,24 +607,26 @@ export const repay = mutation({
       remaining = round2(remaining - applied);
     }
 
-    const balanceBefore = savingsAccount.balance;
-    const balanceAfter = round2(balanceBefore - amount);
-    await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+    if (savingsAccount) {
+      const balanceBefore = savingsAccount.balance;
+      const balanceAfter = round2(balanceBefore - amount);
+      await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
 
-    await ctx.db.insert("transactions", {
-      accountId: savingsAccount._id,
-      memberId: loan.memberId,
-      type: "loan_repayment",
-      amount,
-      balanceBefore,
-      balanceAfter,
-      description: `Loan repayment — ${loan.loanNumber}`,
-      referenceNumber: generateReferenceNumber(),
-      relatedLoanId: loanId,
-      processedBy: isAdmin ? caller._id : undefined,
-      channel: channel ?? "system",
-      status: "completed",
-    });
+      await ctx.db.insert("transactions", {
+        accountId: savingsAccount._id,
+        memberId: loan.memberId,
+        type: "loan_repayment",
+        amount,
+        balanceBefore,
+        balanceAfter,
+        description: `Loan repayment — ${loan.loanNumber}`,
+        referenceNumber: generateReferenceNumber(),
+        relatedLoanId: loanId,
+        processedBy: isAdmin ? caller._id : undefined,
+        channel: channel ?? "system",
+        status: "completed",
+      });
+    }
 
     const newTotalPaid = round2(loan.totalPaid + amount);
     const newOutstanding = round2(Math.max(loan.outstandingBalance - amount, 0));

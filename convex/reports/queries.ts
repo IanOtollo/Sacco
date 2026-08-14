@@ -140,7 +140,9 @@ export const getAdminDashboard = query({
 
     const memberGrowth = months.map((month) => ({
       month,
-      count: members.filter((m) => m.dateJoined.slice(0, 7) === month).length,
+      count: members.filter(
+        (m) => !m.isNonMember && m.dateJoined.slice(0, 7) === month
+      ).length,
     }));
 
     const portfolioBuckets: Record<string, number> = {
