@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { memberSidebarNav } from "@/lib/nav-config";
 import { api } from "@/convex/_generated/api";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SidebarLogoutButton } from "@/components/layout/sidebar-logout-button";
 
 export function MemberSidebar() {
   const pathname = usePathname();
@@ -86,6 +87,8 @@ export function MemberSidebar() {
           );
         })}
       </nav>
+
+      <SidebarLogoutButton collapsed={collapsed} />
     </aside>
   );
 }
