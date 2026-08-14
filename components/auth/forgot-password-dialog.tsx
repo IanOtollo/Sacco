@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,6 +30,9 @@ import { Loader2, MailCheck } from "lucide-react";
 const schema = z.object({
   nationalId: z.string().min(1, "National ID / registration number is required"),
   note: z.string().optional(),
+  // Honeypot — real users never see or fill this field; bots that
+  // auto-fill every input do.
+  website: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -44,11 +47,10 @@ export function ForgotPasswordDialog({
   const requestReset = useMutation(api.passwordResets.mutations.requestReset);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
-  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { nationalId: "", note: "" },
+    defaultValues: { nationalId: "", note: "", website: "" },
   });
 
   function handleOpenChange(next: boolean) {
@@ -65,7 +67,7 @@ export function ForgotPasswordDialog({
       await requestReset({
         nationalId: values.nationalId,
         note: values.note || undefined,
-        website: honeypotRef.current?.value || undefined,
+        website: values.website || undefined,
       });
       setSent(true);
     } catch {
@@ -106,14 +108,19 @@ export function ForgotPasswordDialog({
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <input
-                  ref={honeypotRef}
-                  type="text"
+                <FormField
+                  control={form.control}
                   name="website"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                  render={({ field }) => (
+                    <input
+                      {...field}
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                    />
+                  )}
                 />
                 <FormField
                   control={form.control}

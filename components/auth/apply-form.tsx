@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,6 +31,9 @@ const schema = z
       .string()
       .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`),
     confirmPassword: z.string(),
+    // Honeypot — real users never see or fill this field; bots that
+    // auto-fill every input do.
+    website: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -43,7 +46,6 @@ export function ApplyForm() {
   const submit = useAction(api.membershipApplications.mutations.submit);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -54,6 +56,7 @@ export function ApplyForm() {
       registrationNumber: "",
       password: "",
       confirmPassword: "",
+      website: "",
     },
   });
 
@@ -66,7 +69,7 @@ export function ApplyForm() {
         nationalId: values.nationalId,
         registrationNumber: values.registrationNumber,
         password: values.password,
-        website: honeypotRef.current?.value || undefined,
+        website: values.website || undefined,
       });
       setSubmitted(true);
     } catch (error) {
@@ -98,14 +101,19 @@ export function ApplyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <input
-          ref={honeypotRef}
-          type="text"
+        <FormField
+          control={form.control}
           name="website"
-          tabIndex={-1}
-          autoComplete="off"
-          aria-hidden="true"
-          className="absolute -left-[9999px] h-0 w-0 opacity-0"
+          render={({ field }) => (
+            <input
+              {...field}
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="absolute -left-[9999px] h-0 w-0 opacity-0"
+            />
+          )}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
