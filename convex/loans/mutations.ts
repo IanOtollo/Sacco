@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { requireAdmin, requireMember, requireUser } from "../authz";
+import { requireAdmin, requireMemberProfile, requireUser } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateLoanNumber, calculateLoanSchedule } from "./helpers";
@@ -15,7 +15,7 @@ export const apply = mutation({
     guarantorMemberIds: v.array(v.id("members")),
   },
   handler: async (ctx, args) => {
-    const caller = await requireMember(ctx);
+    const caller = await requireMemberProfile(ctx);
     const memberId = caller.memberId!;
 
     const member = await ctx.db.get(memberId);
@@ -164,7 +164,7 @@ export const respondToGuarantorRequest = mutation({
     remarks: v.optional(v.string()),
   },
   handler: async (ctx, { guarantorId, response, remarks }) => {
-    const caller = await requireMember(ctx);
+    const caller = await requireMemberProfile(ctx);
     const guarantor = await ctx.db.get(guarantorId);
     if (!guarantor) throw new Error("Guarantor request not found");
     if (guarantor.guarantorMemberId !== caller.memberId) {

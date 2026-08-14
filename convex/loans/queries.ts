@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requireMember, requireTreasurer, requireUser } from "../authz";
+import { requireMemberProfile, requireTreasurer, requireUser } from "../authz";
 
 export const listAll = query({
   args: {
@@ -53,7 +53,7 @@ export const listAll = query({
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const caller = await requireMember(ctx);
+    const caller = await requireMemberProfile(ctx);
     const loans = await ctx.db
       .query("loans")
       .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
@@ -127,7 +127,7 @@ export const getById = query({
 export const getGuarantorRequests = query({
   args: {},
   handler: async (ctx) => {
-    const caller = await requireMember(ctx);
+    const caller = await requireMemberProfile(ctx);
     const requests = await ctx.db
       .query("guarantors")
       .withIndex("by_guarantor", (q) => q.eq("guarantorMemberId", caller.memberId!))
@@ -156,7 +156,7 @@ export const getGuarantorRequests = query({
 export const getMyGuarantees = query({
   args: {},
   handler: async (ctx) => {
-    const caller = await requireMember(ctx);
+    const caller = await requireMemberProfile(ctx);
     const guarantees = await ctx.db
       .query("guarantors")
       .withIndex("by_guarantor", (q) => q.eq("guarantorMemberId", caller.memberId!))
