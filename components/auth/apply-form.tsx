@@ -1,0 +1,186 @@
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAction } from "convex/react";
+import { toast } from "sonner";
+import { api } from "@/convex/_generated/api";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/shared/password-input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Loader2, MailCheck } from "lucide-react";
+
+const schema = z
+  .object({
+    firstName: z.string().min(1, "Required"),
+    lastName: z.string().min(1, "Required"),
+    nationalId: z.string().min(1, "Required"),
+    registrationNumber: z.string().min(1, "Required"),
+    password: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+type Values = z.infer<typeof schema>;
+
+export function ApplyForm() {
+  const submit = useAction(api.membershipApplications.mutations.submit);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      nationalId: "",
+      registrationNumber: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  async function onSubmit(values: Values) {
+    setSubmitting(true);
+    try {
+      await submit({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        nationalId: values.nationalId,
+        registrationNumber: values.registrationNumber,
+        password: values.password,
+      });
+      setSubmitted(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not submit your application"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="py-4 text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-success/10 text-success">
+          <MailCheck className="size-6" />
+        </div>
+        <h2 className="mt-4 font-heading text-lg font-semibold">
+          Application submitted
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          A Sacco administrator will review your application. You&apos;ll be
+          able to sign in once it&apos;s approved.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>First name</FormLabel>
+                <FormControl>
+                  <Input disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last name</FormLabel>
+                <FormControl>
+                  <Input disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="nationalId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>National ID number</FormLabel>
+              <FormControl>
+                <Input disabled={submitting} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="registrationNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Registration number</FormLabel>
+              <FormControl>
+                <Input disabled={submitting} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <PasswordInput autoComplete="new-password" disabled={submitting} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm password</FormLabel>
+              <FormControl>
+                <PasswordInput autoComplete="new-password" disabled={submitting} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+          {submitting && <Loader2 className="size-4 animate-spin" />}
+          Submit application
+        </Button>
+      </form>
+    </Form>
+  );
+}

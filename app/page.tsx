@@ -4,13 +4,13 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { getCurrentUserServer } from "@/lib/auth-server";
 import { portalHomeForRole } from "@/lib/constants";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { HeroStats } from "@/components/landing/hero-stats";
-import { LoginForm } from "@/components/auth/login-form";
+import { AuthPanel } from "@/components/auth/auth-panel";
 import { MobileScrollIndicator } from "@/components/landing/mobile-scroll-indicator";
 import { LegalDocumentDialog } from "@/components/landing/legal-document-dialog";
+import { BrandMark } from "@/components/shared/brand-mark";
 import {
-  Landmark,
   PiggyBank,
   HandCoins,
   Users,
@@ -38,29 +38,14 @@ export default async function LandingPage() {
       <div className="order-1 flex items-center justify-center border-b border-border px-4 py-12 sm:px-6 lg:order-2 lg:h-screen lg:w-[440px] lg:shrink-0 lg:border-b-0 lg:border-l lg:px-8 lg:py-0">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3">
-            <Link
-              href="/"
-              className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground"
-            >
-              <Landmark className="size-6" />
+            <Link href="/" className="flex items-center justify-center">
+              <BrandMark size={80} />
             </Link>
             <span className="font-heading text-lg font-bold tracking-tight">
               {saccoInfo.name}
             </span>
           </div>
-          <Card className="rounded-2xl border-border/50 shadow-sm">
-            <CardHeader>
-              <h1 className="font-heading text-xl font-semibold tracking-tight">
-                Sign in to your account
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Enter your member credentials to continue.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <LoginForm />
-            </CardContent>
-          </Card>
+          <AuthPanel />
           <a
             href="#about"
             className="mt-6 block text-center text-sm text-muted-foreground hover:text-foreground lg:hidden"
@@ -149,9 +134,7 @@ export default async function LandingPage() {
         <footer className="border-t border-border py-16 px-4 sm:px-6 lg:px-12">
           <div className="max-w-2xl">
             <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Landmark className="size-4" />
-              </div>
+              <BrandMark size={48} />
               <span className="font-heading font-bold">{saccoInfo.name}</span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">

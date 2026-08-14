@@ -40,7 +40,7 @@ export const getDocument = query({
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "sacco.name"))
       .first();
-    const saccoName = saccoNameRow?.value || "Client Sacco";
+    const saccoName = saccoNameRow?.value || "Edulaepe Credit and Saving";
 
     return {
       title: DOC_TITLES[key],

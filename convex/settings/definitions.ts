@@ -1,5 +1,5 @@
 export const SETTINGS_DEFINITIONS = {
-  "sacco.name": { description: "Sacco name", default: "Client Sacco" },
+  "sacco.name": { description: "Sacco name", default: "Edulaepe Credit and Saving" },
   "sacco.registrationNumber": { description: "Registration number", default: "" },
   "sacco.address": {
     description: "Physical/postal address",

@@ -14,6 +14,7 @@ export const ROUTES = {
   LOGIN: "/",
   ADMIN: "/admin",
   ADMIN_MEMBERS: "/admin/members",
+  ADMIN_APPLICATIONS: "/admin/applications",
   ADMIN_LOANS: "/admin/loans",
   ADMIN_LOAN_PRODUCTS: "/admin/loan-products",
   ADMIN_CONTRIBUTIONS: "/admin/contributions",

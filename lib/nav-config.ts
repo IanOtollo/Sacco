@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   HandCoins,
   Layers,
   Wallet,
@@ -25,6 +26,7 @@ export type NavItem = {
 export const adminSidebarNav: NavItem[] = [
   { label: "Dashboard", href: ROUTES.ADMIN, icon: LayoutDashboard },
   { label: "Members", href: ROUTES.ADMIN_MEMBERS, icon: Users },
+  { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
   { label: "Loans", href: ROUTES.ADMIN_LOANS, icon: HandCoins },
   { label: "Loan Products", href: ROUTES.ADMIN_LOAN_PRODUCTS, icon: Layers },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
@@ -43,6 +45,7 @@ export const adminBottomBarNav: NavItem[] = [
 ];
 
 export const adminMoreSheetNav: NavItem[] = [
+  { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
   { label: "Loan Products", href: ROUTES.ADMIN_LOAN_PRODUCTS, icon: Layers },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
   { label: "Dividends", href: ROUTES.ADMIN_DIVIDENDS, icon: PiggyBank },

@@ -28,8 +28,8 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Client Sacco",
-    template: "%s | Client Sacco",
+    default: "Edulaepe Credit and Saving",
+    template: "%s | Edulaepe Credit and Saving",
   },
   description: "Savings and Credit Cooperative Management Information System",
 };

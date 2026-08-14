@@ -66,8 +66,8 @@ export function RegisterMemberForm({
 }: {
   onSuccess: (result: {
     memberNumber: string;
-    phone: string;
-    pin: string;
+    nationalId: string;
+    password: string;
   }) => void;
 }) {
   const registerMember = useAction(api.members.mutations.registerMember);

@@ -1,10 +1,10 @@
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { createAccount } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
-import { normalizeKenyanPhone } from "../lib/phone";
+import { normalizeNationalId } from "../lib/national-id";
 
-const SUPER_ADMIN_PHONE = "0700000000";
-const SUPER_ADMIN_PIN = "0000";
+const SUPER_ADMIN_ID = "00000000";
+const SUPER_ADMIN_PASSWORD = "ChangeMe123";
 
 // Internal-only: reachable via `npx convex run seed:seedSuperAdmin`, never
 // from a browser client. Public exposure of a bootstrap-admin function
@@ -24,17 +24,17 @@ export const seedSuperAdmin = internalAction({
   handler: async (ctx) => {
     const existing = await ctx.runQuery(internal.seed.findSuperAdmin, {});
     if (existing) {
-      return { created: false, phone: SUPER_ADMIN_PHONE };
+      return { created: false, nationalId: SUPER_ADMIN_ID };
     }
 
-    const phone = normalizeKenyanPhone(SUPER_ADMIN_PHONE);
+    const nationalId = normalizeNationalId(SUPER_ADMIN_ID);
 
     await createAccount(ctx, {
       provider: "password",
-      account: { id: phone, secret: SUPER_ADMIN_PIN },
+      account: { id: nationalId, secret: SUPER_ADMIN_PASSWORD },
       profile: {
-        email: phone,
-        phone,
+        email: nationalId,
+        nationalId,
         name: "Super Admin",
         role: "super_admin",
         isFirstLogin: true,
@@ -42,7 +42,11 @@ export const seedSuperAdmin = internalAction({
       },
     });
 
-    return { created: true, phone: SUPER_ADMIN_PHONE, pin: SUPER_ADMIN_PIN };
+    return {
+      created: true,
+      nationalId: SUPER_ADMIN_ID,
+      password: SUPER_ADMIN_PASSWORD,
+    };
   },
 });
 
@@ -151,7 +155,10 @@ export const seedSaccoSettings = internalMutation({
     if (!superAdmin) throw new Error("Run seedSuperAdmin first");
 
     const defaults: Record<string, { value: string; description: string }> = {
-      "sacco.name": { value: "Client Sacco", description: "Sacco name" },
+      "sacco.name": {
+        value: "Edulaepe Credit and Saving",
+        description: "Sacco name",
+      },
       "financial.minMonthlySavings": {
         value: "500",
         description: "Minimum monthly savings contribution (KES)",

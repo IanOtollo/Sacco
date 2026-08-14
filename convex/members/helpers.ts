@@ -12,6 +12,15 @@ export async function generateMemberNumber(ctx: MutationCtx): Promise<string> {
   return `SACCO-${String(nextSeq).padStart(4, "0")}`;
 }
 
-export function generateDefaultPin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+const PASSWORD_CHARS =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+
+// System-generated temporary password for a newly registered member —
+// they're required to change it on first login (see ForcePasswordChange).
+export function generateDefaultPassword(): string {
+  let out = "";
+  for (let i = 0; i < 10; i++) {
+    out += PASSWORD_CHARS[Math.floor(Math.random() * PASSWORD_CHARS.length)];
+  }
+  return out;
 }

@@ -13,10 +13,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { RegisterMemberForm } from "@/components/members/register-member-form";
-import { formatPhoneDisplay } from "@/lib/phone";
 import { UserPlus, Copy, CheckCircle2 } from "lucide-react";
 
-type Credentials = { memberNumber: string; phone: string; pin: string };
+type Credentials = { memberNumber: string; nationalId: string; password: string };
 
 export function RegisterMemberDialog() {
   const [open, setOpen] = useState(false);
@@ -32,7 +31,7 @@ export function RegisterMemberDialog() {
 
   function copyCredentials() {
     if (!credentials) return;
-    const text = `${saccoName ?? "Client Sacco"} login\nMember: ${credentials.memberNumber}\nPhone: ${formatPhoneDisplay(credentials.phone)}\nPIN: ${credentials.pin}`;
+    const text = `${saccoName ?? "Edulaepe Credit and Saving"} login\nMember: ${credentials.memberNumber}\nNational ID: ${credentials.nationalId}\nPassword: ${credentials.password}`;
     void navigator.clipboard.writeText(text);
     toast.success("Credentials copied to clipboard");
   }
@@ -54,7 +53,7 @@ export function RegisterMemberDialog() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Share these credentials with the member. They&apos;ll be asked
-              to set a personal PIN on first login.
+              to set a personal password on first login.
             </p>
             <div className="mx-auto mt-6 max-w-xs space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-left font-mono text-sm">
               <div className="flex justify-between">
@@ -62,12 +61,12 @@ export function RegisterMemberDialog() {
                 <span>{credentials.memberNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone</span>
-                <span>{formatPhoneDisplay(credentials.phone)}</span>
+                <span className="text-muted-foreground">National ID</span>
+                <span>{credentials.nationalId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">PIN</span>
-                <span>{credentials.pin}</span>
+                <span className="text-muted-foreground">Password</span>
+                <span>{credentials.password}</span>
               </div>
             </div>
             <div className="mt-6 flex justify-center gap-3">
@@ -84,7 +83,7 @@ export function RegisterMemberDialog() {
               <DialogTitle>Register new member</DialogTitle>
               <DialogDescription>
                 Creates a savings and shares account automatically with a
-                system-generated PIN.
+                system-generated password.
               </DialogDescription>
             </DialogHeader>
             <RegisterMemberForm onSuccess={setCredentials} />

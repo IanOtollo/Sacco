@@ -80,7 +80,7 @@ export function getPrivacyPolicySections(saccoName: string): LegalSection[] {
       heading: "8. Data Security",
       body: [
         `We apply technical and organisational safeguards appropriate to the sensitivity of financial data, including role-based access control (members and administrators can only access data relevant to their role), encrypted data transmission, secure credential storage, and a comprehensive audit log recording every material action taken on the Platform for accountability and incident investigation.`,
-        `While we take reasonable steps to protect your information, no system is completely secure. You are responsible for keeping your login PIN confidential and for notifying us immediately if you suspect unauthorised access to your account.`,
+        `While we take reasonable steps to protect your information, no system is completely secure. You are responsible for keeping your login password confidential and for notifying us immediately if you suspect unauthorised access to your account.`,
       ],
     },
     {
@@ -121,7 +121,7 @@ export function getTermsOfServiceSections(saccoName: string): LegalSection[] {
     {
       heading: "3. Your Account and Login Credentials",
       body: [
-        `Your account is identified by your registered phone number and a personal PIN. You are responsible for keeping your PIN confidential and must not share it with any other person, including staff. You must notify the Sacco immediately if you suspect your account has been compromised. The Sacco is not liable for losses arising from your failure to safeguard your login credentials.`,
+        `Your account is identified by your National ID / registration number and a personal password. You are responsible for keeping your password confidential and must not share it with any other person, including staff. You must notify the Sacco immediately if you suspect your account has been compromised. The Sacco is not liable for losses arising from your failure to safeguard your login credentials.`,
       ],
     },
     {

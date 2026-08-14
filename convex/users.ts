@@ -37,7 +37,7 @@ export const setFirstLoginComplete = internalMutation({
   },
 });
 
-export const logPinChange = internalMutation({
+export const logPasswordChange = internalMutation({
   args: { userId: v.id("users"), action: v.string() },
   handler: async (ctx, { userId, action }) => {
     await logAction(ctx, {

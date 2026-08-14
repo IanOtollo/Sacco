@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EditProfileForm } from "@/components/profile/edit-profile-form";
-import { ChangePinForm } from "@/components/profile/change-pin-form";
+import { ChangePasswordForm } from "@/components/profile/change-password-form";
 import { formatDate } from "@/lib/utils";
 
 function Detail({ label, value }: { label: string; value: string }) {
@@ -82,9 +82,9 @@ export function ProfileClient() {
       </Card>
 
       <Card className="rounded-2xl border-border/50 p-6">
-        <h2 className="text-sm font-semibold">Change PIN</h2>
+        <h2 className="text-sm font-semibold">Change password</h2>
         <div className="mt-4">
-          <ChangePinForm />
+          <ChangePasswordForm />
         </div>
       </Card>
     </div>

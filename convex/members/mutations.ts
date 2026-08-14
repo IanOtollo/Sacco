@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { internalMutation, mutation, action } from "../_generated/server";
 import { createAccount } from "@convex-dev/auth/server";
 import { normalizeKenyanPhone } from "../../lib/phone";
-import { generateDefaultPin, generateMemberNumber } from "./helpers";
+import { normalizeNationalId } from "../../lib/national-id";
+import { generateDefaultPassword, generateMemberNumber } from "./helpers";
 import {
   requireAdmin,
   requireAdminInAction,
@@ -44,21 +45,22 @@ export const registerMember = action({
   args: registerArgs,
   returns: v.object({
     memberNumber: v.string(),
-    phone: v.string(),
-    pin: v.string(),
+    nationalId: v.string(),
+    password: v.string(),
   }),
   handler: async (
     ctx,
     args
-  ): Promise<{ memberNumber: string; phone: string; pin: string }> => {
+  ): Promise<{ memberNumber: string; nationalId: string; password: string }> => {
     const admin = await requireAdminInAction(ctx);
 
     const phone = normalizeKenyanPhone(args.phoneNumber);
-    const pin = generateDefaultPin();
+    const nationalId = normalizeNationalId(args.nationalId);
+    const password = generateDefaultPassword();
 
     const duplicate = await ctx.runQuery(internal.members.queries.findDuplicate, {
       phoneNumber: phone,
-      nationalId: args.nationalId,
+      nationalId,
     });
     if (duplicate?.field === "phone") {
       throw new Error(
@@ -73,9 +75,10 @@ export const registerMember = action({
 
     const { user } = await createAccount(ctx, {
       provider: "password",
-      account: { id: phone, secret: pin },
+      account: { id: nationalId, secret: password },
       profile: {
-        email: phone,
+        email: nationalId,
+        nationalId,
         phone,
         name: `${args.firstName} ${args.lastName}`,
         role: "member",
@@ -88,13 +91,14 @@ export const registerMember = action({
       internal.members.mutations.createMemberRecord,
       {
         ...args,
+        nationalId,
         phoneNumber: phone,
         userId: user._id,
         registeredBy: admin._id,
       }
     );
 
-    return { memberNumber: result.memberNumber, phone, pin };
+    return { memberNumber: result.memberNumber, nationalId, password };
   },
 });
 

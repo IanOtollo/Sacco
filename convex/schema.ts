@@ -11,6 +11,16 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    // Login identifier (National ID / registration number), mirrored from
+    // members.nationalId. Also set directly for users with no member
+    // profile (e.g. the super admin).
+    nationalId: v.optional(v.string()),
+    // Set while a self-registered applicant's account is awaiting admin
+    // review (see membershipApplications). Cleared on approval; the account
+    // stays isActive:false the whole time so login is blocked either way.
+    applicationStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("rejected"))
+    ),
     // ─ Sacco-specific fields ─
     role: v.optional(
       v.union(v.literal("super_admin"), v.literal("admin"), v.literal("member"))
@@ -131,6 +141,50 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_userId", ["userId"])
     .index("by_committeeRole", ["committeeRole"]),
+
+  // ─── PASSWORD RESET REQUESTS ──────────────────────
+  // Member-initiated from the login screen while logged out. An admin must
+  // review and approve before a new password is actually issued — nothing
+  // here resets credentials on its own.
+  passwordResetRequests: defineTable({
+    memberId: v.id("members"),
+    nationalId: v.string(),
+    note: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+  })
+    .index("by_member", ["memberId"])
+    .index("by_status", ["status"]),
+
+  // ─── MEMBERSHIP APPLICATIONS ──────────────────────
+  // Public self-registration. The auth account is created immediately at
+  // submit() (so the password is hashed straight into authAccounts, never
+  // stored in plain text here) but stays isActive:false and role-less until
+  // an admin approves — see membershipApplications/mutations.ts.
+  membershipApplications: defineTable({
+    userId: v.id("users"),
+    firstName: v.string(),
+    lastName: v.string(),
+    nationalId: v.string(),
+    registrationNumber: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_nationalId", ["nationalId"]),
 
   // ─── ACCOUNTS ─────────────────────────────────────
   accounts: defineTable({

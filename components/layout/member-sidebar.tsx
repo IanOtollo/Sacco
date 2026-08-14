@@ -4,12 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
-import { Landmark, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { memberSidebarNav } from "@/lib/nav-config";
 import { api } from "@/convex/_generated/api";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarLogoutButton } from "@/components/layout/sidebar-logout-button";
+import { BrandMark } from "@/components/shared/brand-mark";
 
 export function MemberSidebar() {
   const pathname = usePathname();
@@ -31,11 +32,9 @@ export function MemberSidebar() {
       >
         {!collapsed && (
           <>
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              <Landmark className="size-4" />
-            </div>
+            <BrandMark size={44} />
             <span className="truncate font-heading text-sm font-bold tracking-tight text-sidebar-foreground">
-              {saccoName ?? "Client Sacco"}
+              {saccoName ?? "Edulaepe Credit and Saving"}
             </span>
           </>
         )}

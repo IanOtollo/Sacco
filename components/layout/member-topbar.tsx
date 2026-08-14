@@ -20,7 +20,7 @@ export function MemberTopbar({
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/40 bg-background/80 px-4 backdrop-blur-md sm:px-6">
       <div className="lg:hidden">
         <span className="font-heading text-sm font-bold tracking-tight">
-          {saccoName ?? "Client Sacco"}
+          {saccoName ?? "Edulaepe Credit and Saving"}
         </span>
       </div>
       <div className="hidden flex-1 sm:block">

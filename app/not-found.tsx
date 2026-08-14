@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Compass, Landmark } from "lucide-react";
+import { Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/shared/brand-mark";
 
 export const metadata: Metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-        <Landmark className="size-7" />
-      </div>
+      <BrandMark size={88} />
       <div>
         <p className="font-mono text-sm font-medium text-muted-foreground">
           404
@@ -33,7 +32,7 @@ export default function NotFound() {
       </div>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Compass className="size-3.5" />
-        Client Sacco
+        Edulaepe Credit and Saving
       </div>
     </div>
   );

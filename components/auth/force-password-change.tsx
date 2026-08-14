@@ -8,8 +8,9 @@ import { useAction } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
 import { Button } from "@/components/ui/button";
-import { PinInput } from "@/components/shared/pin-input";
+import { PasswordInput } from "@/components/shared/password-input";
 import {
   Form,
   FormControl,
@@ -20,40 +21,42 @@ import {
 } from "@/components/ui/form";
 import { Loader2, ShieldCheck } from "lucide-react";
 
-const pinField = z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits");
+const passwordField = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
 
 const schema = z
   .object({
-    newPin: pinField,
-    confirmPin: z.string(),
+    newPassword: passwordField,
+    confirmPassword: z.string(),
   })
-  .refine((data) => data.newPin === data.confirmPin, {
-    message: "PINs do not match",
-    path: ["confirmPin"],
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
   });
 
 type Values = z.infer<typeof schema>;
 
-export function ForcePinChange() {
-  const completeChange = useAction(api.auth_actions.completeForcedPinChange);
+export function ForcePasswordChange() {
+  const completeChange = useAction(api.auth_actions.completeForcedPasswordChange);
   const { signOut } = useAuthActions();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { newPin: "", confirmPin: "" },
+    defaultValues: { newPassword: "", confirmPassword: "" },
   });
 
   async function onSubmit(values: Values) {
     setSubmitting(true);
     try {
-      await completeChange({ newPin: values.newPin });
-      toast.success("PIN updated. Welcome aboard!");
+      await completeChange({ newPassword: values.newPassword });
+      toast.success("Password updated. Welcome aboard!");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Could not update your PIN. Please try again."
+          : "Could not update your password. Please try again."
       );
     } finally {
       setSubmitting(false);
@@ -68,10 +71,10 @@ export function ForcePinChange() {
             <ShieldCheck className="size-6" />
           </div>
           <h1 className="font-heading text-xl font-semibold tracking-tight">
-            Set a new PIN
+            Set a new password
           </h1>
           <p className="text-sm text-muted-foreground">
-            For your security, you must set a personal 4-digit PIN before
+            For your security, you must set a personal password before
             continuing.
           </p>
         </div>
@@ -79,12 +82,12 @@ export function ForcePinChange() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
-              name="newPin"
+              name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New PIN</FormLabel>
+                  <FormLabel>New password</FormLabel>
                   <FormControl>
-                    <PinInput
+                    <PasswordInput
                       autoComplete="new-password"
                       disabled={submitting}
                       {...field}
@@ -96,12 +99,12 @@ export function ForcePinChange() {
             />
             <FormField
               control={form.control}
-              name="confirmPin"
+              name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm new PIN</FormLabel>
+                  <FormLabel>Confirm new password</FormLabel>
                   <FormControl>
-                    <PinInput
+                    <PasswordInput
                       autoComplete="new-password"
                       disabled={submitting}
                       {...field}
@@ -118,7 +121,7 @@ export function ForcePinChange() {
               disabled={submitting}
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Set PIN and continue
+              Set password and continue
             </Button>
             <Button
               type="button"

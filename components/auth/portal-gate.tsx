@@ -6,7 +6,7 @@ import { useQuery } from "convex/react";
 import { useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { ROUTES, type Role, portalHomeForRole } from "@/lib/constants";
-import { ForcePinChange } from "@/components/auth/force-pin-change";
+import { ForcePasswordChange } from "@/components/auth/force-password-change";
 import { IdleLogoutWatcher } from "@/components/auth/idle-logout-watcher";
 import { Loader2 } from "lucide-react";
 
@@ -62,7 +62,7 @@ export function PortalGate({
   }
 
   if (currentUser.isFirstLogin) {
-    return <ForcePinChange />;
+    return <ForcePasswordChange />;
   }
 
   return (
