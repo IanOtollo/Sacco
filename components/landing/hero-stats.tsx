@@ -16,7 +16,9 @@ export function HeroStats({
   return (
     <div className="mt-16 grid gap-4 sm:grid-cols-3">
       <Card className="rounded-2xl border-border/50 p-8 text-center">
-        <Users className="mx-auto size-6 text-primary" />
+        <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Users className="size-5" />
+        </div>
         <div className="mt-3 text-3xl font-bold tracking-tight">
           <CountUp value={stats.totalMembers} />
         </div>
@@ -25,7 +27,9 @@ export function HeroStats({
         </div>
       </Card>
       <Card className="rounded-2xl border-border/50 p-8 text-center">
-        <PiggyBank className="mx-auto size-6 text-primary" />
+        <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-success/10 text-success">
+          <PiggyBank className="size-5" />
+        </div>
         <div className="mt-3 text-3xl font-bold tracking-tight">
           <CountUp
             value={stats.totalSavings}
@@ -42,7 +46,9 @@ export function HeroStats({
         </div>
       </Card>
       <Card className="rounded-2xl border-border/50 p-8 text-center">
-        <HandCoins className="mx-auto size-6 text-primary" />
+        <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-accent/20 text-accent-foreground">
+          <HandCoins className="size-5" />
+        </div>
         <div className="mt-3 text-3xl font-bold tracking-tight">
           <CountUp
             value={stats.totalLoansDisbursed}

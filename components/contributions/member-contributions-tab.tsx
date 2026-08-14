@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/utils";
 import { Wallet } from "lucide-react";
 
 export function MemberContributionsTab({ memberId }: { memberId: Id<"members"> }) {
@@ -37,7 +38,7 @@ export function MemberContributionsTab({ memberId }: { memberId: Id<"members"> }
       <EmptyState
         icon={Wallet}
         title="No contribution history yet"
-        description="Monthly savings and shares contributions will be tracked here."
+        description="Contributions recorded for this member, across every folder, will appear here."
       />
     );
   }
@@ -47,10 +48,9 @@ export function MemberContributionsTab({ memberId }: { memberId: Id<"members"> }
       <Table>
         <TableHeader>
           <TableRow className="[&>th]:bg-muted/50">
-            <TableHead>Month</TableHead>
-            <TableHead className="text-right">Savings</TableHead>
-            <TableHead className="text-right">Shares</TableHead>
-            <TableHead className="text-right">Total</TableHead>
+            <TableHead>Folder</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -60,15 +60,12 @@ export function MemberContributionsTab({ memberId }: { memberId: Id<"members"> }
               key={c._id}
               className={i % 2 === 1 ? "bg-muted/20" : undefined}
             >
-              <TableCell>{c.month}</TableCell>
-              <TableCell className="text-right">
-                <CurrencyDisplay amount={c.savingsAmount} />
-              </TableCell>
-              <TableCell className="text-right">
-                <CurrencyDisplay amount={c.sharesAmount} />
+              <TableCell>{c.typeName}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {formatDateTime(c._creationTime)}
               </TableCell>
               <TableCell className="text-right font-medium">
-                <CurrencyDisplay amount={c.totalAmount} />
+                <CurrencyDisplay amount={c.amount} />
               </TableCell>
               <TableCell>
                 <StatusBadge status={c.status} />

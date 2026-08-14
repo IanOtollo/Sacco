@@ -1,41 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { RecordContributionModal } from "@/components/contributions/record-contribution-modal";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Wallet } from "lucide-react";
-
-function currentMonth() {
-  return new Date().toISOString().slice(0, 7);
-}
+import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { AddContributionTypeDialog } from "@/components/contributions/add-contribution-type-dialog";
+import { FolderOpen, Users } from "lucide-react";
 
 export function ContributionsPageClient() {
-  const [month, setMonth] = useState(currentMonth());
-  const rows = useQuery(api.contributions.queries.getByMonth, { month });
-  const [recordFor, setRecordFor] = useState<{
-    memberId: Id<"members">;
-    name: string;
-  } | null>(null);
-
-  const defaulters = rows?.filter((r) => r.status === "defaulted").length ?? 0;
-  const paid = rows?.filter((r) => r.status === "paid").length ?? 0;
+  const types = useQuery(api.contributions.queries.listTypes);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -45,108 +22,58 @@ export function ContributionsPageClient() {
             Contributions
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track monthly savings and shares contributions.
+            Each contribution folder keeps its own records — nothing mixes
+            between them.
           </p>
         </div>
-        <Input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="w-full sm:w-48"
-        />
+        <AddContributionTypeDialog />
       </div>
 
-      {rows && (
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Card className="rounded-2xl border-border/50 p-5">
-            <p className="text-sm text-muted-foreground">Members</p>
-            <p className="mt-1 text-2xl font-bold">{rows.length}</p>
-          </Card>
-          <Card className="rounded-2xl border-border/50 p-5">
-            <p className="text-sm text-muted-foreground">Paid</p>
-            <p className="mt-1 text-2xl font-bold text-success">{paid}</p>
-          </Card>
-          <Card className="rounded-2xl border-border/50 p-5">
-            <p className="text-sm text-muted-foreground">Defaulters</p>
-            <p className="mt-1 text-2xl font-bold text-danger">{defaulters}</p>
-          </Card>
-        </div>
-      )}
-
       <div className="mt-6">
-        {rows === undefined ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
+        {types === undefined ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-36 w-full rounded-2xl" />
             ))}
           </div>
-        ) : rows.length === 0 ? (
-          <EmptyState icon={Wallet} title="No active members" />
+        ) : types.length === 0 ? (
+          <EmptyState
+            icon={FolderOpen}
+            title="No contribution folders yet"
+            description='Click "Add Contribution" to create your first folder, e.g. monthly savings, building fund, or AGM fund.'
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow className="[&>th]:bg-muted/50">
-                  <TableHead>Member</TableHead>
-                  <TableHead className="text-right">Savings</TableHead>
-                  <TableHead className="text-right">Shares</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r, i) => (
-                  <TableRow
-                    key={r.memberId}
-                    className={i % 2 === 1 ? "bg-muted/20" : undefined}
-                  >
-                    <TableCell>
-                      <span className="font-medium">{r.name}</span>
-                      <span className="ml-2 font-mono text-xs text-muted-foreground">
-                        {r.memberNumber}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <CurrencyDisplay amount={r.savingsAmount} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <CurrencyDisplay amount={r.sharesAmount} />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      <CurrencyDisplay amount={r.totalAmount} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={r.status} />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setRecordFor({ memberId: r.memberId, name: r.name })
-                        }
-                      >
-                        Record
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {types.map((t) => (
+              <Link key={t._id} href={`/admin/contributions/${t._id}`}>
+                <Card className="h-full rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <FolderOpen className="size-5" />
+                    </div>
+                    {!t.isActive && <Badge variant="outline">Inactive</Badge>}
+                  </div>
+                  <h3 className="mt-4 font-semibold">{t.name}</h3>
+                  {t.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                      {t.description}
+                    </p>
+                  )}
+                  <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users className="size-3.5" />
+                      {t.memberCount}
+                    </span>
+                    <span className="font-semibold">
+                      <CurrencyDisplay amount={t.totalCollected} />
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ))}
           </div>
         )}
       </div>
-
-      {recordFor && (
-        <RecordContributionModal
-          open={recordFor !== null}
-          onOpenChange={(open) => !open && setRecordFor(null)}
-          memberId={recordFor.memberId}
-          memberName={recordFor.name}
-          month={month}
-        />
-      )}
     </div>
   );
 }

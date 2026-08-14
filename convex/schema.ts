@@ -278,13 +278,23 @@ export default defineSchema({
     .index("by_borrower", ["borrowerMemberId"])
     .index("by_status", ["status"]),
 
-  // ─── MONTHLY CONTRIBUTIONS ────────────────────────
+  // ─── CONTRIBUTION TYPES (folders) ─────────────────
+  // Contributions can be for many different purposes (monthly savings,
+  // building fund, AGM fund, emergency relief, etc). Each type is its own
+  // "folder" — contribution records are always scoped to exactly one type
+  // and never mix with another type's records.
+  contributionTypes: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+  }).index("by_name", ["name"]),
+
   contributions: defineTable({
+    contributionTypeId: v.id("contributionTypes"),
     memberId: v.id("members"),
-    month: v.string(), // "2026-08"
-    savingsAmount: v.float64(),
-    sharesAmount: v.float64(),
-    totalAmount: v.float64(),
+    amount: v.float64(),
+    month: v.optional(v.string()), // optional label, e.g. "2026-08"
     status: v.union(
       v.literal("pending"),
       v.literal("paid"),
@@ -295,9 +305,9 @@ export default defineSchema({
     receiptNumber: v.optional(v.string()),
     processedBy: v.optional(v.id("users")),
   })
+    .index("by_type", ["contributionTypeId"])
     .index("by_member", ["memberId"])
-    .index("by_month", ["month"])
-    .index("by_member_month", ["memberId", "month"])
+    .index("by_type_member", ["contributionTypeId", "memberId"])
     .index("by_status", ["status"]),
 
   // ─── DIVIDENDS ────────────────────────────────────

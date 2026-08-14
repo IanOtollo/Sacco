@@ -2,42 +2,62 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireAdmin, requireUser } from "../authz";
 
-function currentMonthString(): string {
-  return new Date().toISOString().slice(0, 7);
-}
-
-export const getByMonth = query({
-  args: { month: v.string() },
-  handler: async (ctx, { month }) => {
+export const listTypes = query({
+  args: {},
+  handler: async (ctx) => {
     await requireAdmin(ctx);
+    const types = await ctx.db.query("contributionTypes").collect();
 
-    const members = await ctx.db
-      .query("members")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
-
-    const contributions = await ctx.db
-      .query("contributions")
-      .withIndex("by_month", (q) => q.eq("month", month))
-      .collect();
-
-    const byMember = new Map(contributions.map((c) => [c.memberId, c]));
-    const isPastMonth = month < currentMonthString();
-
-    return members
-      .map((m) => {
-        const c = byMember.get(m._id);
+    const withStats = await Promise.all(
+      types.map(async (t) => {
+        const contributions = await ctx.db
+          .query("contributions")
+          .withIndex("by_type", (q) => q.eq("contributionTypeId", t._id))
+          .collect();
+        const totalCollected = contributions.reduce((s, c) => s + c.amount, 0);
+        const memberCount = new Set(contributions.map((c) => c.memberId)).size;
         return {
-          memberId: m._id,
-          memberNumber: m.memberNumber,
-          name: `${m.firstName} ${m.lastName}`,
-          savingsAmount: c?.savingsAmount ?? 0,
-          sharesAmount: c?.sharesAmount ?? 0,
-          totalAmount: c?.totalAmount ?? 0,
-          status: c ? c.status : isPastMonth ? "defaulted" : "pending",
+          ...t,
+          totalCollected,
+          memberCount,
+          contributionCount: contributions.length,
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+    );
+
+    return withStats.sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+export const getType = query({
+  args: { typeId: v.id("contributionTypes") },
+  handler: async (ctx, { typeId }) => {
+    await requireAdmin(ctx);
+    return await ctx.db.get(typeId);
+  },
+});
+
+export const listByType = query({
+  args: { typeId: v.id("contributionTypes") },
+  handler: async (ctx, { typeId }) => {
+    await requireAdmin(ctx);
+    const contributions = await ctx.db
+      .query("contributions")
+      .withIndex("by_type", (q) => q.eq("contributionTypeId", typeId))
+      .collect();
+
+    contributions.sort((a, b) => b._creationTime - a._creationTime);
+
+    return await Promise.all(
+      contributions.map(async (c) => {
+        const member = await ctx.db.get(c.memberId);
+        return {
+          ...c,
+          memberName: member ? `${member.firstName} ${member.lastName}` : "—",
+          memberNumber: member?.memberNumber ?? "—",
+        };
+      })
+    );
   },
 });
 
@@ -59,6 +79,14 @@ export const getByMember = query({
       .query("contributions")
       .withIndex("by_member", (q) => q.eq("memberId", memberId))
       .collect();
-    return contributions.sort((a, b) => b.month.localeCompare(a.month));
+
+    contributions.sort((a, b) => b._creationTime - a._creationTime);
+
+    return await Promise.all(
+      contributions.map(async (c) => {
+        const type = await ctx.db.get(c.contributionTypeId);
+        return { ...c, typeName: type?.name ?? "—" };
+      })
+    );
   },
 });

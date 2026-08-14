@@ -48,7 +48,7 @@ export default async function LandingPage() {
         </div>
       </nav>
 
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
+      <section className="bg-primary/[0.04] py-24 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
@@ -78,7 +78,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="about" className="py-24 px-4 sm:px-6 lg:px-8">
+      <section id="about" className="bg-secondary/[0.035] py-24 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
@@ -94,7 +94,9 @@ export default async function LandingPage() {
 
           <div className="mt-16 grid gap-6 sm:grid-cols-3">
             <Card className="rounded-2xl border-border/50 p-8 hover:shadow-lg transition-shadow">
-              <PiggyBank className="size-8 text-primary" />
+              <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <PiggyBank className="size-6" />
+              </div>
               <h3 className="mt-4 font-heading text-lg font-semibold">
                 Save Together
               </h3>
@@ -104,7 +106,9 @@ export default async function LandingPage() {
               </p>
             </Card>
             <Card className="rounded-2xl border-border/50 p-8 hover:shadow-lg transition-shadow">
-              <HandCoins className="size-8 text-primary" />
+              <div className="flex size-12 items-center justify-center rounded-xl bg-accent/20 text-accent-foreground">
+                <HandCoins className="size-6" />
+              </div>
               <h3 className="mt-4 font-heading text-lg font-semibold">
                 Borrow Smart
               </h3>
@@ -114,7 +118,9 @@ export default async function LandingPage() {
               </p>
             </Card>
             <Card className="rounded-2xl border-border/50 p-8 hover:shadow-lg transition-shadow">
-              <Users className="size-8 text-primary" />
+              <div className="flex size-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                <Users className="size-6" />
+              </div>
               <h3 className="mt-4 font-heading text-lg font-semibold">
                 Grow as One
               </h3>

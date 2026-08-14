@@ -91,39 +91,53 @@ export function AdminDashboardClient() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon={Users} label="Active members" value={stats.activeMembers} />
+        <StatCard
+          icon={Users}
+          label="Active members"
+          value={stats.activeMembers}
+          tone="primary"
+        />
         <StatCard
           icon={Wallet}
           label="Savings pool"
           value={<CurrencyDisplay amount={stats.savingsPool} />}
+          tone="success"
         />
         <StatCard
           icon={Banknote}
           label="Shares pool"
           value={<CurrencyDisplay amount={stats.sharesPool} />}
+          tone="secondary"
         />
-        <StatCard icon={HandCoins} label="Active loans" value={stats.activeLoansCount} />
+        <StatCard
+          icon={HandCoins}
+          label="Active loans"
+          value={stats.activeLoansCount}
+          tone="accent"
+        />
         <StatCard
           icon={HandCoins}
           label="Outstanding loans"
           value={<CurrencyDisplay amount={stats.outstandingTotal} />}
+          tone="info"
         />
         <StatCard
           icon={Clock}
           label="Pending applications"
           value={stats.pendingApplications}
-          tone={stats.pendingApplications > 0 ? "warning" : "default"}
+          tone={stats.pendingApplications > 0 ? "warning" : "primary"}
         />
         <StatCard
           icon={AlertTriangle}
           label="Overdue loans"
           value={stats.overdueLoans}
-          tone={stats.overdueLoans > 0 ? "danger" : "default"}
+          tone={stats.overdueLoans > 0 ? "danger" : "primary"}
         />
         <StatCard
           icon={TrendingUp}
           label="This month's collections"
           value={<CurrencyDisplay amount={stats.thisMonthCollections} />}
+          tone="success"
         />
       </div>
 

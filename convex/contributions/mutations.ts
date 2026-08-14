@@ -4,115 +4,123 @@ import { requireAdmin } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
-import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 
-async function creditAccount(
-  ctx: MutationCtx,
+export const createType = mutation({
   args: {
-    memberId: Id<"members">;
-    type: "savings" | "shares";
-    amount: number;
-    month: string;
-    processedBy: Id<"users">;
-  }
-) {
-  if (args.amount <= 0) return;
-  const account = await ctx.db
-    .query("accounts")
-    .withIndex("by_member_type", (q) =>
-      q.eq("memberId", args.memberId).eq("type", args.type)
-    )
-    .first();
-  if (!account) return;
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
 
-  const balanceBefore = account.balance;
-  const balanceAfter = balanceBefore + args.amount;
-  await ctx.db.patch(account._id, { balance: balanceAfter });
+    const existing = await ctx.db
+      .query("contributionTypes")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+    if (existing) throw new Error(`A contribution type named "${args.name}" already exists`);
 
-  await ctx.db.insert("transactions", {
-    accountId: account._id,
-    memberId: args.memberId,
-    type: args.type === "shares" ? "share_purchase" : "deposit",
-    amount: args.amount,
-    balanceBefore,
-    balanceAfter,
-    description: `Monthly contribution — ${args.month}`,
-    referenceNumber: generateReferenceNumber(),
-    processedBy: args.processedBy,
-    channel: "cash",
-    status: "completed",
-  });
-}
+    const typeId = await ctx.db.insert("contributionTypes", {
+      name: args.name,
+      description: args.description,
+      isActive: true,
+      createdBy: admin._id,
+    });
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "contributionType.create",
+      entityType: "contributionType",
+      entityId: typeId,
+      details: { name: args.name },
+    });
+
+    return typeId;
+  },
+});
+
+export const setTypeActive = mutation({
+  args: { typeId: v.id("contributionTypes"), isActive: v.boolean() },
+  handler: async (ctx, { typeId, isActive }) => {
+    const admin = await requireAdmin(ctx);
+    await ctx.db.patch(typeId, { isActive });
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "contributionType.setActive",
+      entityType: "contributionType",
+      entityId: typeId,
+      details: { isActive },
+    });
+  },
+});
 
 export const record = mutation({
   args: {
+    contributionTypeId: v.id("contributionTypes"),
     memberId: v.id("members"),
-    month: v.string(),
-    savingsAmount: v.number(),
-    sharesAmount: v.number(),
+    amount: v.number(),
+    month: v.optional(v.string()),
     receiptNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
+
+    if (args.amount <= 0) {
+      throw new Error("Enter an amount greater than zero");
+    }
+
+    const type = await ctx.db.get(args.contributionTypeId);
+    if (!type) throw new Error("Contribution type not found");
+
     const member = await ctx.db.get(args.memberId);
     if (!member) throw new Error("Member not found");
 
-    const totalAmount = args.savingsAmount + args.sharesAmount;
-    if (totalAmount <= 0) {
-      throw new Error("Enter a savings or shares amount");
-    }
-
-    await creditAccount(ctx, {
-      memberId: args.memberId,
-      type: "savings",
-      amount: args.savingsAmount,
-      month: args.month,
-      processedBy: admin._id,
-    });
-    await creditAccount(ctx, {
-      memberId: args.memberId,
-      type: "shares",
-      amount: args.sharesAmount,
-      month: args.month,
-      processedBy: admin._id,
-    });
-
-    const existing = await ctx.db
-      .query("contributions")
-      .withIndex("by_member_month", (q) =>
-        q.eq("memberId", args.memberId).eq("month", args.month)
+    const savingsAccount = await ctx.db
+      .query("accounts")
+      .withIndex("by_member_type", (q) =>
+        q.eq("memberId", args.memberId).eq("type", "savings")
       )
       .first();
 
-    const patch = {
-      savingsAmount: (existing?.savingsAmount ?? 0) + args.savingsAmount,
-      sharesAmount: (existing?.sharesAmount ?? 0) + args.sharesAmount,
-      totalAmount: (existing?.totalAmount ?? 0) + totalAmount,
-      status: "paid" as const,
+    if (savingsAccount) {
+      const balanceBefore = savingsAccount.balance;
+      const balanceAfter = balanceBefore + args.amount;
+      await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+
+      await ctx.db.insert("transactions", {
+        accountId: savingsAccount._id,
+        memberId: args.memberId,
+        type: "deposit",
+        amount: args.amount,
+        balanceBefore,
+        balanceAfter,
+        description: `Contribution — ${type.name}`,
+        referenceNumber: generateReferenceNumber(),
+        processedBy: admin._id,
+        channel: "cash",
+        status: "completed",
+      });
+    }
+
+    const contributionId = await ctx.db.insert("contributions", {
+      contributionTypeId: args.contributionTypeId,
+      memberId: args.memberId,
+      amount: args.amount,
+      month: args.month,
+      status: "paid",
       paidAt: new Date().toISOString(),
       receiptNumber: args.receiptNumber,
       processedBy: admin._id,
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, patch);
-    } else {
-      await ctx.db.insert("contributions", {
-        memberId: args.memberId,
-        month: args.month,
-        ...patch,
-      });
-    }
+    });
 
     if (member.userId) {
       await notify(ctx, {
         recipientUserId: member.userId,
         title: "Contribution recorded",
-        message: `Your ${args.month} contribution of KES ${totalAmount.toLocaleString()} has been recorded.`,
+        message: `Your contribution of KES ${args.amount.toLocaleString()} to "${type.name}" has been recorded.`,
         type: "payment_received",
         relatedEntityType: "contribution",
-        relatedEntityId: args.memberId,
+        relatedEntityId: contributionId,
       });
     }
 
@@ -120,8 +128,10 @@ export const record = mutation({
       userId: admin._id,
       action: "contribution.record",
       entityType: "contribution",
-      entityId: args.memberId,
-      details: { month: args.month, totalAmount },
+      entityId: contributionId,
+      details: { contributionTypeId: args.contributionTypeId, amount: args.amount },
     });
+
+    return contributionId;
   },
 });

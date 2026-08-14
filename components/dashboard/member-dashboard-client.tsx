@@ -76,22 +76,26 @@ export function MemberDashboardClient() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Link href="/portal/accounts">
           <Card className="rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Wallet className="size-4" />
-              <span className="text-sm">Savings</span>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-success/10 text-success">
+                <Wallet className="size-4" />
+              </div>
+              <span className="text-sm text-muted-foreground">Savings</span>
             </div>
-            <div className="mt-2 text-2xl font-bold">
+            <div className="mt-3 text-2xl font-bold">
               <CurrencyDisplay amount={savingsBalance} />
             </div>
           </Card>
         </Link>
         <Link href="/portal/accounts">
           <Card className="rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Banknote className="size-4" />
-              <span className="text-sm">Shares</span>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+                <Banknote className="size-4" />
+              </div>
+              <span className="text-sm text-muted-foreground">Shares</span>
             </div>
-            <div className="mt-2 text-2xl font-bold">
+            <div className="mt-3 text-2xl font-bold">
               <CurrencyDisplay amount={sharesBalance} />
             </div>
           </Card>
@@ -102,8 +106,10 @@ export function MemberDashboardClient() {
         <Link href={`/portal/loans/${activeLoan._id}`}>
           <Card className="rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
             <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <HandCoins className="size-4 text-muted-foreground" />
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-accent/20 text-accent-foreground">
+                  <HandCoins className="size-4" />
+                </div>
                 <span className="text-sm text-muted-foreground">Active loan</span>
               </div>
               <StatusBadge status={activeLoan.status} />
