@@ -1,9 +1,18 @@
 export const SETTINGS_DEFINITIONS = {
   "sacco.name": { description: "Sacco name", default: "Client Sacco" },
   "sacco.registrationNumber": { description: "Registration number", default: "" },
-  "sacco.address": { description: "Physical/postal address", default: "" },
-  "sacco.phone": { description: "Contact phone number", default: "" },
-  "sacco.email": { description: "Contact email", default: "" },
+  "sacco.address": {
+    description: "Physical/postal address",
+    default: "Nairobi, Kenya",
+  },
+  "sacco.phone": {
+    description: "Contact phone number",
+    default: "+254 700 000 000",
+  },
+  "sacco.email": {
+    description: "Contact email",
+    default: "info@clientsacco.co.ke",
+  },
   "financial.minMonthlySavings": {
     description: "Minimum monthly savings contribution (KES)",
     default: "500",

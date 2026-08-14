@@ -409,4 +409,13 @@ export default defineSchema({
     description: v.string(),
     updatedBy: v.id("users"),
   }).index("by_key", ["key"]),
+
+  // ─── LEGAL DOCUMENTS (Privacy Policy, Terms of Service) ──
+  legalDocuments: defineTable({
+    key: v.union(v.literal("privacy_policy"), v.literal("terms_of_service")),
+    title: v.string(),
+    content: v.string(), // markdown-lite: "## Heading" + blank-line paragraphs
+    updatedAt: v.string(),
+    updatedBy: v.id("users"),
+  }).index("by_key", ["key"]),
 });

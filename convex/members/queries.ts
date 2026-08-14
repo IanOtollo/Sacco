@@ -1,6 +1,28 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
 import { requireAdmin, requireUser } from "../authz";
+
+// Internal-only: used by the registerMember action to reject duplicate
+// phone numbers / national IDs with a clear error before an auth account
+// is ever created for them.
+export const findDuplicate = internalQuery({
+  args: { phoneNumber: v.string(), nationalId: v.string() },
+  handler: async (ctx, { phoneNumber, nationalId }) => {
+    const [byPhone, byId] = await Promise.all([
+      ctx.db
+        .query("members")
+        .withIndex("by_phone", (q) => q.eq("phoneNumber", phoneNumber))
+        .first(),
+      ctx.db
+        .query("members")
+        .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
+        .first(),
+    ]);
+    if (byPhone) return { field: "phone" as const };
+    if (byId) return { field: "nationalId" as const };
+    return null;
+  },
+});
 
 export const list = query({
   args: {

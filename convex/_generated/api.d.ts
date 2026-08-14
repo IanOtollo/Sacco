@@ -24,6 +24,8 @@ import type * as crons from "../crons.js";
 import type * as dividends_mutations from "../dividends/mutations.js";
 import type * as dividends_queries from "../dividends/queries.js";
 import type * as http from "../http.js";
+import type * as legal_mutations from "../legal/mutations.js";
+import type * as legal_queries from "../legal/queries.js";
 import type * as loanProducts_mutations from "../loanProducts/mutations.js";
 import type * as loanProducts_queries from "../loanProducts/queries.js";
 import type * as loans_crons from "../loans/crons.js";
@@ -67,6 +69,8 @@ declare const fullApi: ApiFromModules<{
   "dividends/mutations": typeof dividends_mutations;
   "dividends/queries": typeof dividends_queries;
   http: typeof http;
+  "legal/mutations": typeof legal_mutations;
+  "legal/queries": typeof legal_queries;
   "loanProducts/mutations": typeof loanProducts_mutations;
   "loanProducts/queries": typeof loanProducts_queries;
   "loans/crons": typeof loans_crons;

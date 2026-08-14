@@ -15,6 +15,22 @@ export const getSaccoName = query({
   },
 });
 
+// Public — contact details shown on the unauthenticated landing page footer.
+export const getPublicSaccoInfo = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("settings").collect();
+    const byKey = new Map(rows.map((r) => [r.key, r.value]));
+
+    return {
+      name: byKey.get("sacco.name") || SETTINGS_DEFINITIONS["sacco.name"].default,
+      phone: byKey.get("sacco.phone") || SETTINGS_DEFINITIONS["sacco.phone"].default,
+      email: byKey.get("sacco.email") || SETTINGS_DEFINITIONS["sacco.email"].default,
+      address: byKey.get("sacco.address") || SETTINGS_DEFINITIONS["sacco.address"].default,
+    };
+  },
+});
+
 export const getAll = query({
   args: {},
   handler: async (ctx) => {

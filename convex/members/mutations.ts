@@ -51,6 +51,21 @@ export const registerMember = action({
     const phone = normalizeKenyanPhone(args.phoneNumber);
     const pin = generateDefaultPin();
 
+    const duplicate = await ctx.runQuery(internal.members.queries.findDuplicate, {
+      phoneNumber: phone,
+      nationalId: args.nationalId,
+    });
+    if (duplicate?.field === "phone") {
+      throw new Error(
+        "A member with this phone number is already registered."
+      );
+    }
+    if (duplicate?.field === "nationalId") {
+      throw new Error(
+        "A member with this national ID is already registered."
+      );
+    }
+
     const { user } = await createAccount(ctx, {
       provider: "password",
       account: { id: phone, secret: pin },

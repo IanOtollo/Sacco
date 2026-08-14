@@ -10,7 +10,8 @@ export const ADMIN_ROLES: Role[] = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 
 export const ROUTES = {
   HOME: "/",
-  LOGIN: "/login",
+  // The sign-in form is inline on the landing page (split-screen layout).
+  LOGIN: "/",
   ADMIN: "/admin",
   ADMIN_MEMBERS: "/admin/members",
   ADMIN_LOANS: "/admin/loans",

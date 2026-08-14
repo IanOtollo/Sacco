@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LegalDocumentEditor } from "@/components/settings/legal-document-editor";
 import { Loader2 } from "lucide-react";
 
 type FormValues = Record<string, string>;
@@ -130,6 +131,20 @@ export function SettingsPageClient() {
           Save settings
         </Button>
       </form>
+
+      <div className="mt-10">
+        <h2 className="font-heading text-lg font-semibold tracking-tight">
+          Legal documents
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Shown to visitors on the landing page. Starts with comprehensive
+          default text you can customize below.
+        </p>
+        <div className="mt-4 space-y-6">
+          <LegalDocumentEditor label="Privacy Policy" documentKey="privacy_policy" />
+          <LegalDocumentEditor label="Terms of Service" documentKey="terms_of_service" />
+        </div>
+      </div>
     </div>
   );
 }
