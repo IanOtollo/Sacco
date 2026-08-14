@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { createAccount } from "@convex-dev/auth/server";
+import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { normalizeNationalId } from "../lib/national-id";
 
@@ -48,6 +48,53 @@ export const seedSuperAdmin = internalAction({
       nationalId: SUPER_ADMIN_ID,
       password: SUPER_ADMIN_PASSWORD,
     };
+  },
+});
+
+// One-off migration for a super admin account created back when login was
+// phone+PIN — repoints their auth account onto a National ID + password so
+// they aren't locked out after the switch to National ID-based login.
+// Reachable via `npx convex run seed:migrateSuperAdminCredential`.
+export const migrateSuperAdminCredential = internalAction({
+  args: {},
+  returns: v.object({ nationalId: v.string(), password: v.string() }),
+  handler: async (ctx): Promise<{ nationalId: string; password: string }> => {
+    const superAdmin = await ctx.runQuery(internal.seed.findSuperAdmin, {});
+    if (!superAdmin) throw new Error("No super admin found");
+    if (!superAdmin.email) throw new Error("Super admin has no auth identifier on file");
+
+    const nationalId = normalizeNationalId(SUPER_ADMIN_ID);
+
+    // modifyAccountCredentials can only rotate the secret, not the account
+    // id, so set the new password against the existing (old-identifier)
+    // account first, then repoint the id in a separate step.
+    await modifyAccountCredentials(ctx, {
+      provider: "password",
+      account: { id: superAdmin.email, secret: SUPER_ADMIN_PASSWORD },
+    });
+
+    await ctx.runMutation(internal.seed.repointAccountId, {
+      userId: superAdmin._id,
+      newId: nationalId,
+    });
+
+    return { nationalId: SUPER_ADMIN_ID, password: SUPER_ADMIN_PASSWORD };
+  },
+});
+
+export const repointAccountId = internalMutation({
+  args: { userId: v.id("users"), newId: v.string() },
+  handler: async (ctx, { userId, newId }) => {
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) =>
+        q.eq("userId", userId).eq("provider", "password")
+      )
+      .first();
+    if (!account) throw new Error("No password auth account found for this user");
+
+    await ctx.db.patch(account._id, { providerAccountId: newId });
+    await ctx.db.patch(userId, { email: newId, nationalId: newId });
   },
 });
 

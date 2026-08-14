@@ -11,7 +11,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Select,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -23,10 +23,15 @@ export function LegalDocumentEditor({
   const [content, setContent] = useState("");
   const [dirty, setDirty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadedContent, setLoadedContent] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (doc && !dirty) setContent(doc.content);
-  }, [doc, dirty]);
+  // Adjusting state during render (React's recommended pattern for this)
+  // instead of an effect — seeds the textarea once the doc arrives, and
+  // re-seeds if it changes elsewhere, but only while the user hasn't typed.
+  if (doc && !dirty && doc.content !== loadedContent) {
+    setLoadedContent(doc.content);
+    setContent(doc.content);
+  }
 
   async function handleSave() {
     setSubmitting(true);
