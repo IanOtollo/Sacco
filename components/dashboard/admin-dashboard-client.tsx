@@ -68,7 +68,7 @@ export function AdminDashboardClient() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Array.from({ length: 12 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
@@ -107,21 +107,9 @@ export function AdminDashboardClient() {
           tone="success"
         />
         <StatCard
-          icon={CalendarClock}
-          label="Long-term shares"
-          value={<CurrencyDisplay amount={stats.sharesLongTermPool} />}
-          tone="secondary"
-        />
-        <StatCard
           icon={Banknote}
-          label="Short-term shares"
-          value={<CurrencyDisplay amount={stats.sharesShortTermPool} />}
-          tone="secondary"
-        />
-        <StatCard
-          icon={Landmark}
-          label="Capital shares"
-          value={<CurrencyDisplay amount={stats.sharesCapitalPool} />}
+          label="Shares pool"
+          value={<CurrencyDisplay amount={stats.sharesPool} />}
           tone="secondary"
         />
         <StatCard
@@ -135,18 +123,6 @@ export function AdminDashboardClient() {
           label="Outstanding loans"
           value={<CurrencyDisplay amount={stats.outstandingTotal} />}
           tone="info"
-        />
-        <StatCard
-          icon={Landmark}
-          label="Total loans disbursed"
-          value={<CurrencyDisplay amount={stats.totalDisbursedAmount} />}
-          tone="info"
-        />
-        <StatCard
-          icon={UserRoundX}
-          label="Non-member loans"
-          value={`${stats.nonMemberLoansCount} · ${formatCurrency(stats.nonMemberDisbursedAmount)}`}
-          tone="secondary"
         />
         <StatCard
           icon={Clock}
@@ -285,6 +261,55 @@ export function AdminDashboardClient() {
                 {p.label} ({p.count})
               </div>
             ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="rounded-2xl border-border/50 p-6">
+          <h2 className="text-sm font-semibold">Shares breakdown</h2>
+          <p className="text-xs text-muted-foreground">By type</p>
+          <div className="mt-4 space-y-3">
+            {[
+              { label: "Long-term shares", icon: CalendarClock, value: stats.sharesLongTermPool },
+              { label: "Short-term shares", icon: Banknote, value: stats.sharesShortTermPool },
+              { label: "Capital shares", icon: Landmark, value: stats.sharesCapitalPool },
+            ].map(({ label, icon: Icon, value }) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Icon className="size-3.5" />
+                  {label}
+                </span>
+                <span className="font-semibold">
+                  <CurrencyDisplay amount={value} />
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl border-border/50 p-6">
+          <h2 className="text-sm font-semibold">Loan book</h2>
+          <p className="text-xs text-muted-foreground">Members vs. non-members</p>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Landmark className="size-3.5" />
+                Total disbursed
+              </span>
+              <span className="font-semibold">
+                <CurrencyDisplay amount={stats.totalDisbursedAmount} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <UserRoundX className="size-3.5" />
+                Non-member loans ({stats.nonMemberLoansCount})
+              </span>
+              <span className="font-semibold">
+                <CurrencyDisplay amount={stats.nonMemberDisbursedAmount} />
+              </span>
+            </div>
           </div>
         </Card>
       </div>
