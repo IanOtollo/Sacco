@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +37,26 @@ export function AnnouncementsPageClient() {
     { mode: "create" } | { mode: "edit"; announcement: Doc<"announcements"> } | null
   >(null);
   const [deleteTarget, setDeleteTarget] = useState<Doc<"announcements"> | null>(null);
+  const [publishTarget, setPublishTarget] = useState<Doc<"announcements"> | null>(null);
 
   async function handleTogglePublish(a: Doc<"announcements">) {
+    if (!a.isPublished) {
+      setPublishTarget(a);
+      return;
+    }
     try {
-      await setPublished({ announcementId: a._id, isPublished: !a.isPublished });
-      toast.success(a.isPublished ? "Unpublished" : "Published");
+      await setPublished({ announcementId: a._id, isPublished: false });
+      toast.success("Unpublished");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update");
+    }
+  }
+
+  async function handleConfirmPublish() {
+    if (!publishTarget) return;
+    try {
+      await setPublished({ announcementId: publishTarget._id, isPublished: true });
+      toast.success("Published");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update");
     }
@@ -167,6 +183,19 @@ export function AnnouncementsPageClient() {
           </Button>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        open={publishTarget !== null}
+        onOpenChange={(open) => !open && setPublishTarget(null)}
+        title="Publish this announcement?"
+        description={
+          publishTarget
+            ? `This immediately notifies every ${publishTarget.targetAudience === "all" ? "member and admin" : publishTarget.targetAudience === "members" ? "member" : "admin"}. You can unpublish later, but the notification can't be recalled.`
+            : ""
+        }
+        confirmLabel="Publish"
+        onConfirm={handleConfirmPublish}
+      />
     </div>
   );
 }

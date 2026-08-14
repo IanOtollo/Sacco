@@ -10,6 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
 
 const schema = z.object({
   amount: z
@@ -48,17 +48,17 @@ export function MakePaymentModal({
   monthlyRepayment: number;
 }) {
   const repay = useMutation(api.loans.mutations.repay);
-  const [submitting, setSubmitting] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState<string | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { amount: monthlyRepayment ? String(monthlyRepayment) : "" },
   });
 
-  async function onSubmit(values: Values) {
-    setSubmitting(true);
+  async function handleConfirm() {
+    if (!pendingAmount) return;
     try {
-      await repay({ loanId, amount: Number(values.amount) });
+      await repay({ loanId, amount: Number(pendingAmount) });
       toast.success("Repayment recorded");
       form.reset();
       onOpenChange(false);
@@ -67,42 +67,59 @@ export function MakePaymentModal({
         error instanceof Error ? error.message : "Could not record repayment"
       );
     } finally {
-      setSubmitting(false);
+      setPendingAmount(null);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Make a repayment</DialogTitle>
-          <DialogDescription>
-            This debits your savings account and applies to the oldest unpaid
-            installment first.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount (KES)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" disabled={submitting} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting && <Loader2 className="size-4 animate-spin" />}
-              Confirm repayment
-            </Button>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Make a repayment</DialogTitle>
+            <DialogDescription>
+              This debits your savings account and applies to the oldest
+              unpaid installment first.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit((values) => setPendingAmount(values.amount))}
+              className="space-y-4"
+            >
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount (KES)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">
+                Continue
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmModal
+        open={pendingAmount !== null}
+        onOpenChange={(next) => !next && setPendingAmount(null)}
+        title="Confirm repayment"
+        description={
+          pendingAmount
+            ? `This debits KES ${Number(pendingAmount).toLocaleString()} from the member's savings account and applies it to this loan. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Confirm repayment"
+        onConfirm={handleConfirm}
+      />
+    </>
   );
 }

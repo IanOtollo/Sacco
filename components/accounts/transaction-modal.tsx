@@ -11,6 +11,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyDisplay } from "@/components/shared/currency-display";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Select,
   SelectContent,
@@ -33,7 +35,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
 
 const schema = z.object({
   amount: z
@@ -62,7 +63,7 @@ export function TransactionModal({
 }) {
   const deposit = useMutation(api.accounts.mutations.deposit);
   const withdraw = useMutation(api.accounts.mutations.withdraw);
-  const [submitting, setSubmitting] = useState(false);
+  const [pending, setPending] = useState<Values | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -74,17 +75,17 @@ export function TransactionModal({
     },
   });
 
-  async function onSubmit(values: Values) {
-    setSubmitting(true);
+  async function handleConfirm() {
+    if (!pending) return;
     try {
       const action = mode === "deposit" ? deposit : withdraw;
       await action({
         memberId,
         type: accountType,
-        amount: Number(values.amount),
-        channel: values.channel,
-        receiptNumber: values.receiptNumber || undefined,
-        narration: values.narration || undefined,
+        amount: Number(pending.amount),
+        channel: pending.channel,
+        receiptNumber: pending.receiptNumber || undefined,
+        narration: pending.narration || undefined,
       });
       toast.success(mode === "deposit" ? "Deposit recorded" : "Withdrawal recorded");
       form.reset();
@@ -96,102 +97,109 @@ export function TransactionModal({
           : `Could not record ${mode === "deposit" ? "deposit" : "withdrawal"}`
       );
     } finally {
-      setSubmitting(false);
+      setPending(null);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "deposit" ? "Record deposit" : "Record withdrawal"}
-          </DialogTitle>
-          <DialogDescription>
-            {accountType === "savings" ? "Savings" : "Shares"} account ·
-            recorded manually against a cash/M-Pesa/bank receipt.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount (KES)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      disabled={submitting}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="channel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Channel</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={submitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="mpesa">M-Pesa</SelectItem>
-                      <SelectItem value="bank_transfer">Bank transfer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="receiptNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Receipt number (optional)</FormLabel>
-                  <FormControl>
-                    <Input disabled={submitting} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="narration"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Narration (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea rows={2} disabled={submitting} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting && <Loader2 className="size-4 animate-spin" />}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
               {mode === "deposit" ? "Record deposit" : "Record withdrawal"}
-            </Button>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </DialogTitle>
+            <DialogDescription>
+              {accountType === "savings" ? "Savings" : "Shares"} account ·
+              recorded manually against a cash/M-Pesa/bank receipt.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit((values) => setPending(values))}
+              className="space-y-4"
+            >
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount (KES)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="channel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Channel</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="mpesa">M-Pesa</SelectItem>
+                        <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="receiptNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Receipt number (optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="narration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Narration (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">
+                {mode === "deposit" ? "Record deposit" : "Record withdrawal"}
+              </Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmModal
+        open={pending !== null}
+        onOpenChange={(next) => !next && setPending(null)}
+        title={mode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}
+        description={
+          pending
+            ? `${mode === "deposit" ? "Deposit" : "Withdraw"} KES ${Number(pending.amount).toLocaleString()} ${mode === "deposit" ? "to" : "from"} this member's ${accountType} account via ${pending.channel.replace("_", " ")}. This cannot be undone.`
+            : ""
+        }
+        confirmLabel={mode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}
+        onConfirm={handleConfirm}
+      />
+    </>
   );
 }

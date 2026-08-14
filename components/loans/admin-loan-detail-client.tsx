@@ -47,6 +47,7 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   const [writeOffReason, setWriteOffReason] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [disburseConfirm, setDisburseConfirm] = useState(false);
+  const [approveConfirm, setApproveConfirm] = useState(false);
 
   const reject = useMutation(api.loans.mutations.reject);
 
@@ -165,7 +166,7 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         <div className="mt-6 flex flex-wrap gap-2">
           {loan.status === "pending_approval" && (
             <>
-              <Button onClick={handleApprove}>
+              <Button onClick={() => setApproveConfirm(true)}>
                 <Check className="size-4" />
                 Approve
               </Button>
@@ -277,6 +278,15 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         description="This credits the member's savings account and generates the repayment schedule immediately."
         confirmLabel="Disburse"
         onConfirm={handleDisburse}
+      />
+
+      <ConfirmModal
+        open={approveConfirm}
+        onOpenChange={setApproveConfirm}
+        title="Approve this loan?"
+        description="The member will be notified and the loan will be ready for disbursement."
+        confirmLabel="Approve"
+        onConfirm={handleApprove}
       />
 
       <MakePaymentModal

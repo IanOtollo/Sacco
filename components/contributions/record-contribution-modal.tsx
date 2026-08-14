@@ -11,6 +11,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/shared/search-input";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -50,13 +51,13 @@ export function RecordContributionModal({
   typeName: string;
 }) {
   const record = useMutation(api.contributions.mutations.record);
-  const [submitting, setSubmitting] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<{
     _id: Id<"members">;
     name: string;
     memberNumber: string;
   } | null>(null);
+  const [pending, setPending] = useState<Values | null>(null);
 
   const candidates = useQuery(
     api.members.queries.list,
@@ -72,20 +73,17 @@ export function RecordContributionModal({
     form.reset();
     setSelectedMember(null);
     setMemberSearch("");
+    setPending(null);
   }
 
-  async function onSubmit(values: Values) {
-    if (!selectedMember) {
-      toast.error("Select a member first");
-      return;
-    }
-    setSubmitting(true);
+  async function handleConfirm() {
+    if (!selectedMember || !pending) return;
     try {
       await record({
         contributionTypeId,
         memberId: selectedMember._id,
-        amount: Number(values.amount),
-        receiptNumber: values.receiptNumber || undefined,
+        amount: Number(pending.amount),
+        receiptNumber: pending.receiptNumber || undefined,
       });
       toast.success("Contribution recorded");
       reset();
@@ -95,11 +93,12 @@ export function RecordContributionModal({
         error instanceof Error ? error.message : "Could not record contribution"
       );
     } finally {
-      setSubmitting(false);
+      setPending(null);
     }
   }
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(next) => {
@@ -156,7 +155,10 @@ export function RecordContributionModal({
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((values) => setPending(values))}
+              className="space-y-4"
+            >
               <button
                 type="button"
                 onClick={() => setSelectedMember(null)}
@@ -179,7 +181,7 @@ export function RecordContributionModal({
                   <FormItem>
                     <FormLabel>Amount (KES)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" disabled={submitting} {...field} />
+                      <Input type="number" step="0.01" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,20 +194,33 @@ export function RecordContributionModal({
                   <FormItem>
                     <FormLabel>Receipt number (optional)</FormLabel>
                     <FormControl>
-                      <Input disabled={submitting} {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting && <Loader2 className="size-4 animate-spin" />}
-                Record contribution
+              <Button type="submit" className="w-full">
+                Continue
               </Button>
             </form>
           </Form>
         )}
       </DialogContent>
     </Dialog>
+
+    <ConfirmModal
+      open={pending !== null}
+      onOpenChange={(next) => !next && setPending(null)}
+      title="Confirm contribution"
+      description={
+        pending && selectedMember
+          ? `Record KES ${Number(pending.amount).toLocaleString()} from ${selectedMember.name} to "${typeName}". This credits their savings account and cannot be undone.`
+          : ""
+      }
+      confirmLabel="Confirm"
+      onConfirm={handleConfirm}
+    />
+    </>
   );
 }
