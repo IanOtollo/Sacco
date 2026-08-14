@@ -12,9 +12,19 @@ import { internal } from "../_generated/api";
 // Always returns the same generic result regardless of whether the ID
 // matched an account, so the endpoint can't be used to enumerate members.
 export const requestReset = mutation({
-  args: { nationalId: v.string(), note: v.optional(v.string()) },
+  args: {
+    nationalId: v.string(),
+    note: v.optional(v.string()),
+    // Honeypot — real users never see or fill this field; bots that
+    // auto-fill every input do. Silently no-op if it's non-empty.
+    website: v.optional(v.string()),
+  },
   returns: v.object({ ok: v.boolean() }),
-  handler: async (ctx, { nationalId, note }) => {
+  handler: async (ctx, { nationalId, note, website }) => {
+    if (website) {
+      return { ok: true };
+    }
+
     let normalized: string;
     try {
       normalized = normalizeNationalId(nationalId);

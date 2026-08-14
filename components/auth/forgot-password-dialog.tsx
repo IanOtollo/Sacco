@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,6 +44,7 @@ export function ForgotPasswordDialog({
   const requestReset = useMutation(api.passwordResets.mutations.requestReset);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -64,6 +65,7 @@ export function ForgotPasswordDialog({
       await requestReset({
         nationalId: values.nationalId,
         note: values.note || undefined,
+        website: honeypotRef.current?.value || undefined,
       });
       setSent(true);
     } catch {
@@ -104,6 +106,15 @@ export function ForgotPasswordDialog({
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <input
+                  ref={honeypotRef}
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                />
                 <FormField
                   control={form.control}
                   name="nationalId"

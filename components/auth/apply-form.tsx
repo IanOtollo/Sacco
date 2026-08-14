@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,6 +43,7 @@ export function ApplyForm() {
   const submit = useAction(api.membershipApplications.mutations.submit);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -65,6 +66,7 @@ export function ApplyForm() {
         nationalId: values.nationalId,
         registrationNumber: values.registrationNumber,
         password: values.password,
+        website: honeypotRef.current?.value || undefined,
       });
       setSubmitted(true);
     } catch (error) {
@@ -96,6 +98,15 @@ export function ApplyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <input
+          ref={honeypotRef}
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="absolute -left-[9999px] h-0 w-0 opacity-0"
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}

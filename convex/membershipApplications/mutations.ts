@@ -25,9 +25,16 @@ export const submit = action({
     nationalId: v.string(),
     registrationNumber: v.string(),
     password: v.string(),
+    // Honeypot — real users never see or fill this field; bots that
+    // auto-fill every input do. Silently no-op if it's non-empty.
+    website: v.optional(v.string()),
   },
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args): Promise<{ ok: boolean }> => {
+    if (args.website) {
+      return { ok: true };
+    }
+
     const nationalId = normalizeNationalId(args.nationalId);
 
     const duplicate = await ctx.runQuery(
