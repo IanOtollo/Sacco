@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
@@ -66,8 +65,8 @@ export function AdminDashboardClient() {
   if (data === undefined) {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
@@ -92,7 +91,7 @@ export function AdminDashboardClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
           icon={Users}
           label="Active members"
@@ -124,39 +123,27 @@ export function AdminDashboardClient() {
           tone="accent"
           onClick={() => setLoansIssuedOpen(true)}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={
-            <Link href="/admin/applications">
-              <UserPlus className="size-4" />
-              Review applications
-            </Link>
-          }
-        />
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={
-            <Link href="/admin/contributions">
-              <Wallet className="size-4" />
-              Record contribution
-            </Link>
-          }
-        />
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={
-            <Link href="/admin/loans">
-              <ClipboardCheck className="size-4" />
-              Review pending loans
-            </Link>
-          }
-        />
+        <Link
+          href="/admin/applications"
+          className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-card p-5 text-center text-sm font-medium text-foreground ring-1 ring-foreground/10 transition-shadow hover:shadow-md"
+        >
+          <UserPlus className="size-5 text-primary" />
+          Review applications
+        </Link>
+        <Link
+          href="/admin/contributions"
+          className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-card p-5 text-center text-sm font-medium text-foreground ring-1 ring-foreground/10 transition-shadow hover:shadow-md"
+        >
+          <Wallet className="size-5 text-primary" />
+          Record contribution
+        </Link>
+        <Link
+          href="/admin/loans"
+          className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-card p-5 text-center text-sm font-medium text-foreground ring-1 ring-foreground/10 transition-shadow hover:shadow-md"
+        >
+          <ClipboardCheck className="size-5 text-primary" />
+          Review pending loans
+        </Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
