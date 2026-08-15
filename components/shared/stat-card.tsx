@@ -1,4 +1,4 @@
-import { type LucideIcon } from "lucide-react";
+import { SquareArrowUpRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TONE_CHIP: Record<string, string> = {
@@ -12,7 +12,7 @@ const TONE_CHIP: Record<string, string> = {
 };
 
 const CARD_CLASSES =
-  "block w-full rounded-2xl bg-card p-5 text-left text-sm text-card-foreground ring-1 ring-foreground/10";
+  "relative block w-full rounded-2xl bg-card p-5 text-left text-sm text-card-foreground ring-1 ring-foreground/10";
 
 export function StatCard({
   icon: Icon,
@@ -49,6 +49,9 @@ export function StatCard({
       >
         {value}
       </div>
+      {onClick && (
+        <SquareArrowUpRight className="absolute right-3 bottom-3 size-4 text-muted-foreground" />
+      )}
     </>
   );
 

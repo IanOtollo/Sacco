@@ -92,7 +92,7 @@ export function AdminDashboardClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           icon={Users}
           label="Active members"
@@ -124,9 +124,11 @@ export function AdminDashboardClient() {
           tone="accent"
           onClick={() => setLoansIssuedOpen(true)}
         />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
         <Button
           variant="outline"
-          className="h-full w-full"
           nativeButton={false}
           render={
             <Link href="/admin/applications">
@@ -137,7 +139,6 @@ export function AdminDashboardClient() {
         />
         <Button
           variant="outline"
-          className="h-full w-full"
           nativeButton={false}
           render={
             <Link href="/admin/contributions">
@@ -148,7 +149,6 @@ export function AdminDashboardClient() {
         />
         <Button
           variant="outline"
-          className="h-full w-full"
           nativeButton={false}
           render={
             <Link href="/admin/loans">
