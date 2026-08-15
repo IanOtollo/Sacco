@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -31,13 +31,22 @@ export function MemberFolderGrid({
 }) {
   const members = useQuery(api.members.queries.list, { search, status });
 
-  const sorted = members
-    ? [...members].sort((a, b) =>
-        sort === "name"
-          ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
-          : b._creationTime - a._creationTime
-      )
-    : undefined;
+  // Memoized so this only produces a new array reference when the actual
+  // data or sort order changes — not on every render. Without this, the
+  // effect below (which reports rows up to the parent) would re-fire every
+  // render and loop forever, since a fresh sort([...members]) is a new
+  // reference each time even when nothing changed.
+  const sorted = useMemo(
+    () =>
+      members
+        ? [...members].sort((a, b) =>
+            sort === "name"
+              ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+              : b._creationTime - a._creationTime
+          )
+        : undefined,
+    [members, sort]
+  );
 
   useEffect(() => {
     if (sorted) onLoaded?.(sorted);
