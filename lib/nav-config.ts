@@ -13,6 +13,7 @@ import {
   Home,
   MessageSquare,
   User,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
@@ -29,6 +30,7 @@ export const adminSidebarNav: NavItem[] = [
   { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
   { label: "Loans", href: ROUTES.ADMIN_LOANS, icon: HandCoins },
   { label: "Projects", href: ROUTES.ADMIN_PROJECTS, icon: Sprout },
+  { label: "Deposit Claims", href: ROUTES.ADMIN_DEPOSIT_CLAIMS, icon: ReceiptText },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
   { label: "Dividends", href: ROUTES.ADMIN_DIVIDENDS, icon: PiggyBank },
   { label: "Reports", href: ROUTES.ADMIN_REPORTS, icon: BarChart3 },
@@ -47,6 +49,7 @@ export const adminBottomBarNav: NavItem[] = [
 export const adminMoreSheetNav: NavItem[] = [
   { label: "Applications", href: ROUTES.ADMIN_APPLICATIONS, icon: UserPlus },
   { label: "Projects", href: ROUTES.ADMIN_PROJECTS, icon: Sprout },
+  { label: "Deposit Claims", href: ROUTES.ADMIN_DEPOSIT_CLAIMS, icon: ReceiptText },
   { label: "Contributions", href: ROUTES.ADMIN_CONTRIBUTIONS, icon: Wallet },
   { label: "Dividends", href: ROUTES.ADMIN_DIVIDENDS, icon: PiggyBank },
   { label: "Announcements", href: ROUTES.ADMIN_ANNOUNCEMENTS, icon: Megaphone },
@@ -83,6 +86,7 @@ export function committeeNavItems(
   }
   if (committeeRole === "treasurer") {
     items.push(
+      { label: "Deposit Claims", href: ROUTES.PORTAL_DEPOSIT_CLAIMS, icon: ReceiptText },
       { label: "Contributions", href: ROUTES.PORTAL_CONTRIBUTIONS, icon: Wallet },
       { label: "Dividends", href: ROUTES.PORTAL_DIVIDENDS, icon: PiggyBank },
       { label: "Reports", href: ROUTES.PORTAL_REPORTS, icon: BarChart3 }

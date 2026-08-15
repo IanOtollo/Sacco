@@ -166,6 +166,41 @@ export default defineSchema({
     .index("by_member", ["memberId"])
     .index("by_status", ["status"]),
 
+  // ─── DEPOSIT CLAIMS ───────────────────────────────
+  // A member self-reports a deposit they made (with the M-Pesa/bank
+  // transaction reference) and the treasurer cross-checks it against the
+  // actual transaction before it credits the account. Treasurer/admin can
+  // also record a deposit directly (skips the pending step, status is
+  // inserted already "approved").
+  depositClaims: defineTable({
+    memberId: v.id("members"),
+    accountType: v.union(
+      v.literal("savings"),
+      v.literal("shares_long_term"),
+      v.literal("shares_short_term"),
+      v.literal("shares_capital")
+    ),
+    amount: v.float64(),
+    channel: v.union(
+      v.literal("cash"),
+      v.literal("mpesa"),
+      v.literal("bank_transfer")
+    ),
+    transactionReference: v.string(),
+    note: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    submittedBy: v.id("users"),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+  })
+    .index("by_member", ["memberId"])
+    .index("by_status", ["status"]),
+
   // ─── MEMBERSHIP APPLICATIONS ──────────────────────
   // Public self-registration. The auth account is created immediately at
   // submit() (so the password is hashed straight into authAccounts, never

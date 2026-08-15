@@ -21,6 +21,8 @@ import type * as authz from "../authz.js";
 import type * as contributions_mutations from "../contributions/mutations.js";
 import type * as contributions_queries from "../contributions/queries.js";
 import type * as crons from "../crons.js";
+import type * as depositClaims_mutations from "../depositClaims/mutations.js";
+import type * as depositClaims_queries from "../depositClaims/queries.js";
 import type * as dividends_mutations from "../dividends/mutations.js";
 import type * as dividends_queries from "../dividends/queries.js";
 import type * as http from "../http.js";
@@ -72,6 +74,8 @@ declare const fullApi: ApiFromModules<{
   "contributions/mutations": typeof contributions_mutations;
   "contributions/queries": typeof contributions_queries;
   crons: typeof crons;
+  "depositClaims/mutations": typeof depositClaims_mutations;
+  "depositClaims/queries": typeof depositClaims_queries;
   "dividends/mutations": typeof dividends_mutations;
   "dividends/queries": typeof dividends_queries;
   http: typeof http;

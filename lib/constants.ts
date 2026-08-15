@@ -17,6 +17,7 @@ export const ROUTES = {
   ADMIN_APPLICATIONS: "/admin/applications",
   ADMIN_LOANS: "/admin/loans",
   ADMIN_PROJECTS: "/admin/projects",
+  ADMIN_DEPOSIT_CLAIMS: "/admin/deposit-claims",
   ADMIN_CONTRIBUTIONS: "/admin/contributions",
   ADMIN_DIVIDENDS: "/admin/dividends",
   ADMIN_REPORTS: "/admin/reports",
@@ -33,6 +34,7 @@ export const ROUTES = {
   PORTAL_ANNOUNCEMENTS: "/portal/announcements",
   PORTAL_PROJECTS: "/portal/projects",
   PORTAL_CONTRIBUTIONS: "/portal/contributions",
+  PORTAL_DEPOSIT_CLAIMS: "/portal/deposit-claims",
   PORTAL_DIVIDENDS: "/portal/dividends",
   PORTAL_REPORTS: "/portal/reports",
 } as const;
