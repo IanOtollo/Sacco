@@ -262,9 +262,9 @@ export function RecordDepositDialog() {
                   name="transactionReference"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Transaction reference</FormLabel>
+                      <FormLabel>M-Pesa name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. QFT7X8Y2Z1" {...field} />
+                        <Input placeholder="e.g. JOHN KAMAU" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

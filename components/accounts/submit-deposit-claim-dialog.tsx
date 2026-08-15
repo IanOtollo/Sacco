@@ -175,9 +175,9 @@ export function SubmitDepositClaimDialog({
                   name="transactionReference"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Transaction reference / M-Pesa code</FormLabel>
+                      <FormLabel>M-Pesa name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. QFT7X8Y2Z1" disabled={submitting} {...field} />
+                        <Input placeholder="e.g. JOHN KAMAU" disabled={submitting} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

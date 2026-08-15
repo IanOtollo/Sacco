@@ -107,7 +107,7 @@ export function DepositClaimsPageClient() {
                     {claim.channel.replace("_", " ")}
                   </p>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    Ref: {claim.transactionReference}
+                    M-Pesa name: {claim.transactionReference}
                   </p>
                   {claim.note && (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export function DepositClaimsPageClient() {
         open={approveTarget !== null}
         onOpenChange={(open) => !open && setApproveTarget(null)}
         title="Approve this deposit?"
-        description="This credits the member's account for the claimed amount. Make sure you've confirmed the transaction reference matches what actually came in."
+        description="This credits the member's account for the claimed amount. Make sure the M-Pesa name matches what actually came in."
         confirmLabel="Approve and credit"
         onConfirm={handleApprove}
       />
