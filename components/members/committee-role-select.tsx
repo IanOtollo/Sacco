@@ -43,12 +43,11 @@ export function CommitteeRoleSelect({
   const [pending, setPending] = useState<CommitteeRole | "none" | null>(null);
 
   if (currentUser?.role !== "super_admin") {
-    return currentRole ? (
+    return (
       <p className="text-sm text-muted-foreground">
-        Governance role:{" "}
-        <span className="font-medium text-foreground">{ROLE_LABEL[currentRole]}</span>
+        Role: <span className="font-medium text-foreground">{ROLE_LABEL[currentRole ?? "none"]}</span>
       </p>
-    ) : null;
+    );
   }
 
   async function handleConfirm() {
@@ -58,10 +57,10 @@ export function CommitteeRoleSelect({
         memberId,
         committeeRole: pending === "none" ? undefined : pending,
       });
-      toast.success("Governance role updated");
+      toast.success("Role updated");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not update governance role"
+        error instanceof Error ? error.message : "Could not update role"
       );
     } finally {
       setPending(null);
@@ -71,7 +70,7 @@ export function CommitteeRoleSelect({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Governance role</span>
+        <span className="text-xs text-muted-foreground">Role</span>
         <Select
           value={currentRole ?? "none"}
           onValueChange={(v) => setPending(v as CommitteeRole | "none")}
@@ -92,7 +91,7 @@ export function CommitteeRoleSelect({
       <ConfirmModal
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
-        title={`Set governance role to "${pending ? ROLE_LABEL[pending] : ""}"?`}
+        title={`Set role to "${pending ? ROLE_LABEL[pending] : ""}"?`}
         description={
           (pending && pending !== "none" ? ROLE_WARNING[pending] : undefined) ??
           "This changes what this member can see and do across the Sacco MIS."
