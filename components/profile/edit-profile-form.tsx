@@ -22,11 +22,15 @@ import {
 import { Loader2 } from "lucide-react";
 
 const schema = z.object({
+  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  dateOfBirth: z.string().optional(),
+  occupation: z.string().optional(),
+  employer: z.string().optional(),
   postalAddress: z.string().optional(),
   residentialAddress: z.string().optional(),
-  nextOfKinName: z.string().min(1, "Required"),
-  nextOfKinPhone: z.string().min(1, "Required"),
-  nextOfKinRelationship: z.string().min(1, "Required"),
+  nextOfKinName: z.string().optional(),
+  nextOfKinPhone: z.string().optional(),
+  nextOfKinRelationship: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -50,6 +54,10 @@ export function EditProfileForm({
     form.reset(defaults);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    defaults.email,
+    defaults.dateOfBirth,
+    defaults.occupation,
+    defaults.employer,
     defaults.postalAddress,
     defaults.residentialAddress,
     defaults.nextOfKinName,
@@ -60,7 +68,10 @@ export function EditProfileForm({
   async function onSubmit(values: Values) {
     setSubmitting(true);
     try {
-      await update({ memberId, patch: values });
+      await update({
+        memberId,
+        patch: { ...values, email: values.email || undefined },
+      });
       toast.success("Profile updated");
     } catch (error) {
       toast.error(
@@ -75,6 +86,58 @@ export function EditProfileForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email (optional)</FormLabel>
+                <FormControl>
+                  <Input type="email" disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="dateOfBirth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date of birth (optional)</FormLabel>
+                <FormControl>
+                  <Input type="date" disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="occupation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Occupation (optional)</FormLabel>
+                <FormControl>
+                  <Input disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="employer"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employer (optional)</FormLabel>
+                <FormControl>
+                  <Input disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="postalAddress"

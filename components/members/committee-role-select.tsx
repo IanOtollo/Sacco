@@ -17,7 +17,7 @@ import { ConfirmModal } from "@/components/shared/confirm-modal";
 type CommitteeRole = "chairman" | "deputy_chairman" | "secretary" | "treasurer";
 
 const ROLE_LABEL: Record<CommitteeRole | "none", string> = {
-  none: "No governance role",
+  none: "Member",
   chairman: "Chairman",
   deputy_chairman: "Deputy Chairman",
   secretary: "Secretary",
@@ -70,13 +70,13 @@ export function CommitteeRoleSelect({
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">Governance role</span>
         <Select
           value={currentRole ?? "none"}
           onValueChange={(v) => setPending(v as CommitteeRole | "none")}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full max-w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

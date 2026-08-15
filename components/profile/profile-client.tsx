@@ -66,11 +66,19 @@ export function ProfileClient() {
       </Card>
 
       <Card className="rounded-2xl border-border/50 p-6">
-        <h2 className="text-sm font-semibold">Address & next of kin</h2>
+        <h2 className="text-sm font-semibold">More about you</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Fill these in yourself — your admin only sets your name, ID, and
+          phone number.
+        </p>
         <div className="mt-4">
           <EditProfileForm
             memberId={member._id}
             defaults={{
+              email: member.email ?? "",
+              dateOfBirth: member.dateOfBirth ?? "",
+              occupation: member.occupation ?? "",
+              employer: member.employer ?? "",
               postalAddress: member.postalAddress ?? "",
               residentialAddress: member.residentialAddress ?? "",
               nextOfKinName: member.nextOfKinName ?? "",

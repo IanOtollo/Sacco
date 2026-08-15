@@ -20,17 +20,17 @@ export function SidebarLogoutButton({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={() => void handleSignOut()}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg bg-danger px-3 py-2 text-sm font-medium text-danger-foreground transition-opacity hover:opacity-90",
+        "flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-danger transition-colors hover:bg-danger/10",
         collapsed && "justify-center px-0"
       )}
     >
-      <LogOut className="size-4 shrink-0" />
+      <LogOut className="size-3.5 shrink-0" />
       {!collapsed && <span className="truncate">Sign out</span>}
     </button>
   );
 
   return (
-    <div className="border-t border-sidebar-border p-3">
+    <div className="border-t border-sidebar-border p-2.5">
       {collapsed ? (
         <Tooltip>
           <TooltipTrigger render={button} />

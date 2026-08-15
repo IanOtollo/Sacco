@@ -150,6 +150,10 @@ export const updateStatus = mutation({
 });
 
 const SELF_EDITABLE_FIELDS = [
+  "email",
+  "dateOfBirth",
+  "occupation",
+  "employer",
   "postalAddress",
   "residentialAddress",
   "nextOfKinName",
@@ -165,6 +169,7 @@ export const update = mutation({
       lastName: v.optional(v.string()),
       middleName: v.optional(v.string()),
       email: v.optional(v.string()),
+      dateOfBirth: v.optional(v.string()),
       occupation: v.optional(v.string()),
       employer: v.optional(v.string()),
       postalAddress: v.optional(v.string()),
@@ -191,7 +196,7 @@ export const update = mutation({
       );
       if (disallowed.length > 0) {
         throw new Error(
-          "You can only update your address and next of kin details."
+          "You can only update your contact, address, and next of kin details."
         );
       }
     }
