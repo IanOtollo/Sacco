@@ -5,11 +5,7 @@ import { requireAdmin, requireSuperAdmin, requireUser } from "../authz";
 import { logAction } from "../audit";
 import { Id } from "../_generated/dataModel";
 
-const genderValidator = v.union(
-  v.literal("male"),
-  v.literal("female"),
-  v.literal("other")
-);
+const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
 const registerArgs = {
   firstName: v.string(),
@@ -24,9 +20,11 @@ const registerArgs = {
   employer: v.optional(v.string()),
   postalAddress: v.optional(v.string()),
   residentialAddress: v.optional(v.string()),
-  nextOfKinName: v.string(),
-  nextOfKinPhone: v.string(),
-  nextOfKinRelationship: v.string(),
+  // Optional at creation — members self-registering only give name/ID/phone;
+  // they (or an admin later) can add next of kin from the profile page.
+  nextOfKinName: v.optional(v.string()),
+  nextOfKinPhone: v.optional(v.string()),
+  nextOfKinRelationship: v.optional(v.string()),
 };
 
 export const createMemberRecord = internalMutation({

@@ -98,6 +98,56 @@ export const repointAccountId = internalMutation({
   },
 });
 
+// One-off cleanup for test signups — deletes a membership application, its
+// linked (never-approved) auth account, and any auth sessions/tokens tied
+// to it. Reachable via `npx convex run seed:deleteTestApplication`.
+export const deleteTestApplication = internalMutation({
+  args: { applicationId: v.id("membershipApplications") },
+  handler: async (ctx, { applicationId }) => {
+    const application = await ctx.db.get(applicationId);
+    if (!application) throw new Error("Application not found");
+
+    const userId = application.userId;
+
+    const accounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
+      .collect();
+    for (const account of accounts) {
+      await ctx.db.delete(account._id);
+    }
+
+    const sessions = await ctx.db
+      .query("authSessions")
+      .withIndex("userId", (q) => q.eq("userId", userId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    const notifications = await ctx.db.query("notifications").collect();
+    for (const n of notifications) {
+      if (n.relatedEntityId === applicationId) {
+        await ctx.db.delete(n._id);
+      }
+    }
+
+    await ctx.db.delete(applicationId);
+    await ctx.db.delete(userId);
+
+    return { deleted: true };
+  },
+});
+
+// One-off: delete a single notification by id (used for cleaning up stray
+// notifications left over from deleted test data).
+export const deleteNotification = internalMutation({
+  args: { notificationId: v.id("notifications") },
+  handler: async (ctx, { notificationId }) => {
+    await ctx.db.delete(notificationId);
+  },
+});
+
 export const seedLoanProducts = internalMutation({
   args: {},
   handler: async (ctx) => {

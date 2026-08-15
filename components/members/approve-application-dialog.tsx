@@ -1,23 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
-import { normalizeKenyanPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { formatPhoneDisplay } from "@/lib/phone";
 import {
   Dialog,
   DialogContent,
@@ -25,46 +13,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import type { Doc } from "@/convex/_generated/dataModel";
 
-const schema = z.object({
-  middleName: z.string().optional(),
-  phoneNumber: z
-    .string()
-    .min(1, "Required")
-    .refine(
-      (v) => {
-        try {
-          normalizeKenyanPhone(v);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Enter a valid Kenyan phone number" }
-    ),
-  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(["male", "female", "other"]),
-  occupation: z.string().optional(),
-  employer: z.string().optional(),
-  postalAddress: z.string().optional(),
-  residentialAddress: z.string().optional(),
-  nextOfKinName: z.string().min(1, "Required"),
-  nextOfKinPhone: z.string().min(1, "Required"),
-  nextOfKinRelationship: z.string().min(1, "Required"),
-});
-
-type Values = z.infer<typeof schema>;
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
 
 export function ApproveApplicationDialog({
   application,
@@ -79,50 +38,15 @@ export function ApproveApplicationDialog({
   const [submitting, setSubmitting] = useState(false);
   const [approved, setApproved] = useState(false);
 
-  const form = useForm<Values>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      middleName: "",
-      phoneNumber: "",
-      email: "",
-      dateOfBirth: "",
-      gender: "male",
-      occupation: "",
-      employer: "",
-      postalAddress: "",
-      residentialAddress: "",
-      nextOfKinName: "",
-      nextOfKinPhone: "",
-      nextOfKinRelationship: "",
-    },
-  });
-
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
-    if (!next) {
-      setApproved(false);
-      form.reset();
-    }
+    if (!next) setApproved(false);
   }
 
-  async function onSubmit(values: Values) {
+  async function handleApprove() {
     setSubmitting(true);
     try {
-      await approve({
-        applicationId: application._id,
-        middleName: values.middleName || undefined,
-        phoneNumber: values.phoneNumber,
-        email: values.email || undefined,
-        dateOfBirth: values.dateOfBirth || undefined,
-        gender: values.gender,
-        occupation: values.occupation || undefined,
-        employer: values.employer || undefined,
-        postalAddress: values.postalAddress || undefined,
-        residentialAddress: values.residentialAddress || undefined,
-        nextOfKinName: values.nextOfKinName,
-        nextOfKinPhone: values.nextOfKinPhone,
-        nextOfKinRelationship: values.nextOfKinRelationship,
-      });
+      await approve({ applicationId: application._id });
       setApproved(true);
       toast.success("Application approved");
     } catch (error) {
@@ -136,7 +60,7 @@ export function ApproveApplicationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] w-full max-w-2xl overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-md">
         {approved ? (
           <div className="py-4 text-center">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-success/10 text-success">
@@ -157,200 +81,42 @@ export function ApproveApplicationDialog({
           <>
             <DialogHeader>
               <DialogTitle>
-                Approve {application.firstName} {application.lastName}
+                Approve {application.firstName} {application.lastName}?
               </DialogTitle>
               <DialogDescription>
-                National ID {application.nationalId} · Registration No.{" "}
-                {application.registrationNumber}. Complete the remaining
-                details to activate their membership.
+                Review what they submitted, then confirm to activate their
+                membership. They can add next of kin and address details
+                themselves once they sign in.
               </DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="middleName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Middle name (optional)</FormLabel>
-                        <FormControl>
-                          <Input disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={submitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone number</FormLabel>
-                        <FormControl>
-                          <Input type="tel" placeholder="0712345678" disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email (optional)</FormLabel>
-                        <FormControl>
-                          <Input type="email" disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="dateOfBirth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of birth (optional)</FormLabel>
-                        <FormControl>
-                          <Input type="date" disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="occupation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Occupation (optional)</FormLabel>
-                        <FormControl>
-                          <Input disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="employer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Employer (optional)</FormLabel>
-                        <FormControl>
-                          <Input disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="postalAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Postal address (optional)</FormLabel>
-                        <FormControl>
-                          <Textarea rows={2} disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="residentialAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Residential address (optional)</FormLabel>
-                        <FormControl>
-                          <Textarea rows={2} disabled={submitting} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Next of kin</h3>
-                  <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <FormField
-                      control={form.control}
-                      name="nextOfKinName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full name</FormLabel>
-                          <FormControl>
-                            <Input disabled={submitting} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="nextOfKinPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone number</FormLabel>
-                          <FormControl>
-                            <Input type="tel" disabled={submitting} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="nextOfKinRelationship"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Relationship</FormLabel>
-                          <FormControl>
-                            <Input disabled={submitting} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" size="lg" disabled={submitting}>
-                  {submitting && <Loader2 className="size-4 animate-spin" />}
-                  Approve and activate membership
-                </Button>
-              </form>
-            </Form>
+            <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 p-4">
+              <Detail
+                label="Name"
+                value={`${application.firstName} ${application.lastName}`}
+              />
+              <Detail
+                label="Gender"
+                value={application.gender.charAt(0).toUpperCase() + application.gender.slice(1)}
+              />
+              <Detail label="National ID" value={application.nationalId} />
+              <Detail
+                label="Phone number"
+                value={formatPhoneDisplay(application.phoneNumber)}
+              />
+              <Detail
+                label="Registration number"
+                value={application.registrationNumber}
+              />
+            </dl>
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={submitting}
+              onClick={handleApprove}
+            >
+              {submitting && <Loader2 className="size-4 animate-spin" />}
+              Approve and activate membership
+            </Button>
           </>
         )}
       </DialogContent>

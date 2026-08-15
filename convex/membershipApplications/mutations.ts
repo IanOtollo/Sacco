@@ -8,21 +8,19 @@ import { logAction, logSystemAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { internal } from "../_generated/api";
 
-const genderValidator = v.union(
-  v.literal("male"),
-  v.literal("female"),
-  v.literal("other")
-);
+const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
 // Public — reachable from the logged-out "Sign up" tab on the landing page.
 // Creates the auth account right away (so the password is hashed straight
-// into authAccounts, never stored in plain text anywhere) but leaves it
+// into authAccounts, never stored in plain text here) but leaves it
 // isActive:false and role-less until an admin approves.
 export const submit = action({
   args: {
     firstName: v.string(),
     lastName: v.string(),
     nationalId: v.string(),
+    phoneNumber: v.string(),
+    gender: genderValidator,
     registrationNumber: v.string(),
     password: v.string(),
     // Honeypot — real users never see or fill this field; bots that
@@ -36,17 +34,18 @@ export const submit = action({
     }
 
     const nationalId = normalizeNationalId(args.nationalId);
+    const phone = normalizeKenyanPhone(args.phoneNumber);
 
     const duplicate = await ctx.runQuery(
       internal.membershipApplications.mutations.findDuplicate,
-      { nationalId }
+      { nationalId, phoneNumber: phone }
     );
     if (duplicate === "member") {
-      throw new Error("A member with this National ID is already registered.");
+      throw new Error("A member with this National ID or phone number is already registered.");
     }
     if (duplicate === "application") {
       throw new Error(
-        "An application with this National ID is already pending review."
+        "An application with this National ID or phone number is already pending review."
       );
     }
 
@@ -56,6 +55,7 @@ export const submit = action({
       profile: {
         email: nationalId,
         nationalId,
+        phone,
         name: `${args.firstName} ${args.lastName}`,
         isActive: false,
         applicationStatus: "pending",
@@ -67,6 +67,8 @@ export const submit = action({
       firstName: args.firstName,
       lastName: args.lastName,
       nationalId,
+      phoneNumber: phone,
+      gender: args.gender,
       registrationNumber: args.registrationNumber,
     });
 
@@ -75,13 +77,21 @@ export const submit = action({
 });
 
 export const findDuplicate = internalQuery({
-  args: { nationalId: v.string() },
-  handler: async (ctx, { nationalId }) => {
-    const member = await ctx.db
+  args: { nationalId: v.string(), phoneNumber: v.optional(v.string()) },
+  handler: async (ctx, { nationalId, phoneNumber }) => {
+    const memberById = await ctx.db
       .query("members")
       .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
       .first();
-    if (member) return "member" as const;
+    if (memberById) return "member" as const;
+
+    if (phoneNumber) {
+      const memberByPhone = await ctx.db
+        .query("members")
+        .withIndex("by_phone", (q) => q.eq("phoneNumber", phoneNumber))
+        .first();
+      if (memberByPhone) return "member" as const;
+    }
 
     const application = await ctx.db
       .query("membershipApplications")
@@ -100,6 +110,8 @@ export const recordApplication = internalMutation({
     firstName: v.string(),
     lastName: v.string(),
     nationalId: v.string(),
+    phoneNumber: v.string(),
+    gender: genderValidator,
     registrationNumber: v.string(),
   },
   handler: async (ctx, args) => {
@@ -131,37 +143,22 @@ export const recordApplication = internalMutation({
   },
 });
 
-const approveArgs = {
-  applicationId: v.id("membershipApplications"),
-  middleName: v.optional(v.string()),
-  phoneNumber: v.string(),
-  email: v.optional(v.string()),
-  dateOfBirth: v.optional(v.string()),
-  gender: genderValidator,
-  occupation: v.optional(v.string()),
-  employer: v.optional(v.string()),
-  postalAddress: v.optional(v.string()),
-  residentialAddress: v.optional(v.string()),
-  nextOfKinName: v.string(),
-  nextOfKinPhone: v.string(),
-  nextOfKinRelationship: v.string(),
-};
-
+// Admin just reads what the applicant already provided and confirms — no
+// re-keying of phone/gender, and next of kin is left for the member to add
+// themselves later from their own profile (see members.mutations.update).
 export const approve = mutation({
-  args: approveArgs,
-  handler: async (ctx, args) => {
+  args: { applicationId: v.id("membershipApplications") },
+  handler: async (ctx, { applicationId }) => {
     const admin = await requireAdmin(ctx);
-    const application = await ctx.db.get(args.applicationId);
+    const application = await ctx.db.get(applicationId);
     if (!application) throw new Error("Application not found");
     if (application.status !== "pending") {
       throw new Error("This application has already been reviewed");
     }
 
-    const phone = normalizeKenyanPhone(args.phoneNumber);
-
     const phoneTaken = await ctx.db
       .query("members")
-      .withIndex("by_phone", (q) => q.eq("phoneNumber", phone))
+      .withIndex("by_phone", (q) => q.eq("phoneNumber", application.phoneNumber))
       .first();
     if (phoneTaken) {
       throw new Error("A member with this phone number is already registered.");
@@ -170,19 +167,9 @@ export const approve = mutation({
     const result = await ctx.runMutation(internal.members.mutations.createMemberRecord, {
       firstName: application.firstName,
       lastName: application.lastName,
-      middleName: args.middleName,
       nationalId: application.nationalId,
-      phoneNumber: phone,
-      email: args.email,
-      dateOfBirth: args.dateOfBirth,
-      gender: args.gender,
-      occupation: args.occupation,
-      employer: args.employer,
-      postalAddress: args.postalAddress,
-      residentialAddress: args.residentialAddress,
-      nextOfKinName: args.nextOfKinName,
-      nextOfKinPhone: args.nextOfKinPhone,
-      nextOfKinRelationship: args.nextOfKinRelationship,
+      phoneNumber: application.phoneNumber,
+      gender: application.gender,
       userId: application.userId,
       registeredBy: admin._id,
     });
@@ -193,7 +180,7 @@ export const approve = mutation({
       applicationStatus: undefined,
     });
 
-    await ctx.db.patch(args.applicationId, {
+    await ctx.db.patch(applicationId, {
       status: "approved",
       reviewedBy: admin._id,
       reviewedAt: new Date().toISOString(),
@@ -212,7 +199,7 @@ export const approve = mutation({
       userId: admin._id,
       action: "membershipApplication.approve",
       entityType: "membershipApplication",
-      entityId: args.applicationId,
+      entityId: applicationId,
       details: { memberId: result.memberId },
     });
   },

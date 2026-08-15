@@ -8,9 +8,17 @@ import { useAction } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { PASSWORD_MIN_LENGTH } from "@/lib/password";
+import { normalizeKenyanPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/shared/password-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -26,6 +34,21 @@ const schema = z
     firstName: z.string().min(1, "Required"),
     lastName: z.string().min(1, "Required"),
     nationalId: z.string().min(1, "Required"),
+    phoneNumber: z
+      .string()
+      .min(1, "Required")
+      .refine(
+        (v) => {
+          try {
+            normalizeKenyanPhone(v);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Enter a valid Kenyan phone number" }
+      ),
+    gender: z.enum(["male", "female"], { message: "Select a gender" }),
     registrationNumber: z.string().min(1, "Required"),
     password: z
       .string()
@@ -53,6 +76,8 @@ export function ApplyForm() {
       firstName: "",
       lastName: "",
       nationalId: "",
+      phoneNumber: "",
+      gender: undefined,
       registrationNumber: "",
       password: "",
       confirmPassword: "",
@@ -67,6 +92,8 @@ export function ApplyForm() {
         firstName: values.firstName,
         lastName: values.lastName,
         nationalId: values.nationalId,
+        phoneNumber: values.phoneNumber,
+        gender: values.gender,
         registrationNumber: values.registrationNumber,
         password: values.password,
         website: values.website || undefined,
@@ -156,6 +183,42 @@ export function ApplyForm() {
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone number</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="0712345678" disabled={submitting} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="gender"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gender</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="registrationNumber"

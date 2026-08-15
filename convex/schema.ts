@@ -105,7 +105,7 @@ export default defineSchema({
     phoneNumber: v.string(), // canonical +254XXXXXXXXX, used for login
     email: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
-    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"))),
     occupation: v.optional(v.string()),
     employer: v.optional(v.string()),
     postalAddress: v.optional(v.string()),
@@ -176,6 +176,8 @@ export default defineSchema({
     firstName: v.string(),
     lastName: v.string(),
     nationalId: v.string(),
+    phoneNumber: v.string(),
+    gender: v.union(v.literal("male"), v.literal("female")),
     registrationNumber: v.string(),
     status: v.union(
       v.literal("pending"),
