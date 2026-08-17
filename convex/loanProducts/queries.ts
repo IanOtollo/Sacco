@@ -11,6 +11,10 @@ export const list = query({
   },
 });
 
+// Used only by the member self-service loan application form — excludes
+// the internal "Non-Member Loan" placeholder product (code NMEM), which
+// exists solely to satisfy loans.productId for admin-issued non-member
+// loans and isn't something a member should ever pick themselves.
 export const listActive = query({
   args: {},
   handler: async (ctx) => {
@@ -19,7 +23,9 @@ export const listActive = query({
       .query("loanProducts")
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .collect();
-    return products.sort((a, b) => a.name.localeCompare(b.name));
+    return products
+      .filter((p) => p.code !== "NMEM")
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

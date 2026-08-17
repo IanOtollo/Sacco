@@ -153,7 +153,7 @@ export const apply = mutation({
     }
 
     const product = await ctx.db.get(args.productId);
-    if (!product || !product.isActive) {
+    if (!product || !product.isActive || product.code === "NMEM") {
       throw new Error("Loan product not available");
     }
 
