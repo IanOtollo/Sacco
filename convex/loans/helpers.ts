@@ -1,6 +1,11 @@
 import { MutationCtx } from "../_generated/server";
 
-export { calculateLoanSchedule, type ScheduleInstallment } from "../../lib/loan-calc";
+export {
+  calculateLoanSchedule,
+  calculateBulletLoan,
+  resolveNonMemberInterestRate,
+  type ScheduleInstallment,
+} from "../../lib/loan-calc";
 
 export async function generateLoanNumber(
   ctx: MutationCtx,

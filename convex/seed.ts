@@ -245,6 +245,64 @@ export const seedLoanProducts = internalMutation({
   },
 });
 
+// One-off migration for the new interest rules: every member loan product
+// now charges a flat 10% of principal regardless of which product or term
+// is chosen (previously each product had its own rate/method). Also seeds
+// a placeholder "Non-Member Loan" product — non-member loans are priced
+// per lib/loan-calc.ts resolveNonMemberInterestRate (banded by loan term
+// in days) rather than a product-configured rate, but loans.productId is
+// still required, so this product exists to satisfy that reference; its
+// own interestRate/interestMethod fields are unused for non-member loans.
+// Internal-only, reachable via `npx convex run seed:applyFlatInterestRules`.
+export const applyFlatInterestRules = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const admins = await ctx.db.query("users").collect();
+    const superAdmin = admins.find((u) => u.role === "super_admin");
+    if (!superAdmin) throw new Error("No super admin exists yet");
+
+    const memberProducts = await ctx.db.query("loanProducts").collect();
+    let updated = 0;
+    for (const product of memberProducts) {
+      await ctx.db.patch(product._id, {
+        interestRate: 10,
+        interestMethod: "flat_total",
+      });
+      updated++;
+    }
+
+    const existingNonMemberProduct = await ctx.db
+      .query("loanProducts")
+      .withIndex("by_code", (q) => q.eq("code", "NMEM"))
+      .first();
+    let nonMemberProductId = existingNonMemberProduct?._id;
+    if (!nonMemberProductId) {
+      nonMemberProductId = await ctx.db.insert("loanProducts", {
+        name: "Non-Member Loan",
+        code: "NMEM",
+        description:
+          "Collateral-backed loan for non-members, priced per the term-based rate bands rather than a fixed rate.",
+        interestRate: 0,
+        interestMethod: "flat_total",
+        minimumAmount: 500,
+        maximumAmount: 1000000,
+        minimumTermMonths: BigInt(1),
+        maximumTermMonths: BigInt(60),
+        requiredGuarantors: BigInt(0),
+        maxLoanToSavingsRatio: 0,
+        processingFeePercent: 0,
+        insuranceFeePercent: 0,
+        gracePeriodDays: BigInt(0),
+        penaltyRatePercent: 5,
+        isActive: true,
+        createdBy: superAdmin._id,
+      });
+    }
+
+    return { updated, nonMemberProductId };
+  },
+});
+
 // One-off ops utility for correcting a settings value directly (e.g. the
 // Sacco's real name arriving after the initial seed already ran and
 // seedSaccoSettings's "insert only if missing" guard no longer applies).

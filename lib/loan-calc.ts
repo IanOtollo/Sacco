@@ -14,7 +14,7 @@ export function calculateLoanSchedule(params: {
   principal: number;
   annualRatePercent: number;
   termMonths: number;
-  method: "reducing_balance" | "flat_rate";
+  method: "reducing_balance" | "flat_rate" | "flat_total";
   disbursementDate: Date;
   gracePeriodDays: number;
 }): {
@@ -71,7 +71,13 @@ export function calculateLoanSchedule(params: {
       });
     }
   } else {
-    totalInterest = principal * (annualRatePercent / 100) * (termMonths / 12);
+    // "flat_rate" prorates the rate by term length (an annual rate applied
+    // to however many months the loan runs); "flat_total" charges the rate
+    // once against the principal regardless of term length.
+    totalInterest =
+      method === "flat_total"
+        ? principal * (annualRatePercent / 100)
+        : principal * (annualRatePercent / 100) * (termMonths / 12);
     const totalRepayable = principal + totalInterest;
     monthlyRepayment = totalRepayable / termMonths;
     const principalPerMonth = principal / termMonths;
@@ -95,5 +101,53 @@ export function calculateLoanSchedule(params: {
     totalRepayable: round2(principal + totalInterest),
     monthlyRepayment: round2(monthlyRepayment),
     installments,
+  };
+}
+
+// Non-member loans are short, collateral-backed, and repaid as a single
+// lump sum rather than monthly installments — a "2-week loan" doesn't fit
+// a monthly amortization schedule. Interest is a flat one-time charge on
+// the principal, banded by how many days the loan runs.
+export function resolveNonMemberInterestRate(termDays: number): number {
+  if (termDays < 14) return 11.3;
+  if (termDays < 30) return 20.3;
+  if (termDays <= 31) return 30.3;
+  return 23;
+}
+
+export function calculateBulletLoan(params: {
+  principal: number;
+  termDays: number;
+  disbursementDate: Date;
+}): {
+  interestRate: number;
+  totalInterest: number;
+  totalRepayable: number;
+  dueDate: string;
+  installments: ScheduleInstallment[];
+} {
+  const { principal, termDays, disbursementDate } = params;
+  const interestRate = resolveNonMemberInterestRate(termDays);
+  const totalInterest = round2(principal * (interestRate / 100));
+  const totalRepayable = round2(principal + totalInterest);
+
+  const dueDate = new Date(disbursementDate);
+  dueDate.setDate(dueDate.getDate() + termDays);
+  const dueDateStr = dueDate.toISOString().slice(0, 10);
+
+  return {
+    interestRate,
+    totalInterest,
+    totalRepayable,
+    dueDate: dueDateStr,
+    installments: [
+      {
+        installmentNumber: 1,
+        dueDate: dueDateStr,
+        principalDue: principal,
+        interestDue: totalInterest,
+        totalDue: totalRepayable,
+      },
+    ],
   };
 }

@@ -153,7 +153,9 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Monthly payment</p>
+            <p className="text-muted-foreground">
+              {loan.termDays != null ? "Amount due (lump sum)" : "Monthly payment"}
+            </p>
             <p className="mt-0.5 font-semibold">
               <CurrencyDisplay amount={loan.monthlyRepayment} />
             </p>
@@ -163,6 +165,12 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
             <p className="mt-0.5 font-semibold">{formatDate(loan.appliedAt)}</p>
           </div>
         </div>
+        {loan.termDays != null && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Term: {Number(loan.termDays)} day{Number(loan.termDays) === 1 ? "" : "s"} ·{" "}
+            {loan.interestRate}% flat interest
+          </p>
+        )}
 
         {loan.status === "rejected" && loan.rejectionReason && (
           <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">

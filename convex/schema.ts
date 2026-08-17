@@ -298,7 +298,8 @@ export default defineSchema({
     interestRate: v.float64(),
     interestMethod: v.union(
       v.literal("reducing_balance"),
-      v.literal("flat_rate")
+      v.literal("flat_rate"),
+      v.literal("flat_total")
     ),
     minimumAmount: v.float64(),
     maximumAmount: v.float64(),
@@ -329,6 +330,10 @@ export default defineSchema({
     amountDisbursed: v.float64(),
     monthlyRepayment: v.float64(),
     termMonths: v.int64(),
+    // Set instead of (and takes priority over) termMonths for non-member
+    // loans, which are priced and repaid as a single lump sum rather than
+    // monthly installments — see lib/loan-calc.ts calculateBulletLoan.
+    termDays: v.optional(v.int64()),
     interestRate: v.float64(),
     purpose: v.string(),
     disbursementDate: v.optional(v.string()),

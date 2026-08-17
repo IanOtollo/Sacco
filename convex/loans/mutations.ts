@@ -3,7 +3,12 @@ import { mutation } from "../_generated/server";
 import { requireAdmin, requireMemberProfile, requireUser } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
-import { generateLoanNumber, calculateLoanSchedule } from "./helpers";
+import {
+  generateLoanNumber,
+  calculateLoanSchedule,
+  calculateBulletLoan,
+  resolveNonMemberInterestRate,
+} from "./helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
 import { generateNonMemberNumber } from "../members/helpers";
 import { normalizeKenyanPhone } from "../../lib/phone";
@@ -14,16 +19,18 @@ import { normalizeNationalId } from "../../lib/national-id";
 // guarantor workflow entirely (guarantors are fellow members vouching;
 // non-members provide collateral instead) but still goes through the same
 // approve → disburse steps as any other loan for a second set of eyes on
-// the money movement.
+// the money movement. Priced per resolveNonMemberInterestRate — a flat,
+// one-time interest charge banded by how many days the loan runs, repaid
+// as a single lump sum rather than monthly installments — rather than a
+// loan-product-configured rate, so there's no product to pick.
 export const issueNonMemberLoan = mutation({
   args: {
     firstName: v.string(),
     lastName: v.string(),
     phoneNumber: v.string(),
     nationalId: v.string(),
-    productId: v.id("loanProducts"),
     principalAmount: v.number(),
-    termMonths: v.number(),
+    termDays: v.number(),
     purpose: v.string(),
     collateralDescription: v.string(),
     collateralValue: v.number(),
@@ -31,9 +38,14 @@ export const issueNonMemberLoan = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
 
-    const product = await ctx.db.get(args.productId);
+    const product = await ctx.db
+      .query("loanProducts")
+      .withIndex("by_code", (q) => q.eq("code", "NMEM"))
+      .first();
     if (!product || !product.isActive) {
-      throw new Error("Loan product not available");
+      throw new Error(
+        "Non-member loan product is not set up — run the applyFlatInterestRules migration"
+      );
     }
     if (
       args.principalAmount < product.minimumAmount ||
@@ -43,13 +55,8 @@ export const issueNonMemberLoan = mutation({
         `Amount must be between KES ${product.minimumAmount.toLocaleString()} and KES ${product.maximumAmount.toLocaleString()}`
       );
     }
-    if (
-      args.termMonths < product.minimumTermMonths ||
-      args.termMonths > product.maximumTermMonths
-    ) {
-      throw new Error(
-        `Term must be between ${product.minimumTermMonths} and ${product.maximumTermMonths} months`
-      );
+    if (!Number.isInteger(args.termDays) || args.termDays < 1 || args.termDays > 3650) {
+      throw new Error("Term must be a whole number of days between 1 and 3650");
     }
     if (!args.collateralDescription.trim()) {
       throw new Error("Collateral description is required for non-member loans");
@@ -83,6 +90,7 @@ export const issueNonMemberLoan = mutation({
     }
 
     const loanNumber = await generateLoanNumber(ctx, product.code);
+    const interestRate = resolveNonMemberInterestRate(args.termDays);
 
     const loanId = await ctx.db.insert("loans", {
       loanNumber,
@@ -95,8 +103,9 @@ export const issueNonMemberLoan = mutation({
       insuranceFee: 0,
       amountDisbursed: 0,
       monthlyRepayment: 0,
-      termMonths: BigInt(args.termMonths),
-      interestRate: product.interestRate,
+      termMonths: BigInt(Math.max(1, Math.ceil(args.termDays / 30))),
+      termDays: BigInt(args.termDays),
+      interestRate,
       purpose: args.purpose,
       totalPaid: 0,
       outstandingBalance: 0,
@@ -115,6 +124,8 @@ export const issueNonMemberLoan = mutation({
       details: {
         loanNumber,
         amount: args.principalAmount,
+        termDays: args.termDays,
+        interestRate,
         borrowerName: `${args.firstName} ${args.lastName}`,
       },
     });
@@ -364,14 +375,45 @@ export const disburse = mutation({
     if (!product) throw new Error("Loan product not found");
 
     const disbursementDate = new Date();
-    const schedule = calculateLoanSchedule({
-      principal: loan.principalAmount,
-      annualRatePercent: loan.interestRate,
-      termMonths: Number(loan.termMonths),
-      method: product.interestMethod,
-      disbursementDate,
-      gracePeriodDays: Number(product.gracePeriodDays),
-    });
+
+    // Non-member loans (loan.termDays set) are priced as a single lump sum
+    // banded by term length rather than a product-configured monthly rate.
+    let interestRate = loan.interestRate;
+    let totalInterest: number;
+    let totalRepayable: number;
+    let monthlyRepayment: number;
+    let installments: { installmentNumber: number; dueDate: string; principalDue: number; interestDue: number; totalDue: number }[];
+    let maturityDateStr: string;
+
+    if (loan.termDays != null) {
+      const bullet = calculateBulletLoan({
+        principal: loan.principalAmount,
+        termDays: Number(loan.termDays),
+        disbursementDate,
+      });
+      interestRate = bullet.interestRate;
+      totalInterest = bullet.totalInterest;
+      totalRepayable = bullet.totalRepayable;
+      monthlyRepayment = bullet.totalRepayable;
+      installments = bullet.installments;
+      maturityDateStr = bullet.dueDate;
+    } else {
+      const schedule = calculateLoanSchedule({
+        principal: loan.principalAmount,
+        annualRatePercent: loan.interestRate,
+        termMonths: Number(loan.termMonths),
+        method: product.interestMethod,
+        disbursementDate,
+        gracePeriodDays: Number(product.gracePeriodDays),
+      });
+      totalInterest = schedule.totalInterest;
+      totalRepayable = schedule.totalRepayable;
+      monthlyRepayment = schedule.monthlyRepayment;
+      installments = schedule.installments;
+      const maturityDate = new Date(disbursementDate);
+      maturityDate.setMonth(maturityDate.getMonth() + Number(loan.termMonths));
+      maturityDateStr = maturityDate.toISOString().slice(0, 10);
+    }
 
     const processingFee = round2(
       loan.principalAmount * (product.processingFeePercent / 100)
@@ -383,24 +425,22 @@ export const disburse = mutation({
       loan.principalAmount - processingFee - insuranceFee
     );
 
-    const maturityDate = new Date(disbursementDate);
-    maturityDate.setMonth(maturityDate.getMonth() + Number(loan.termMonths));
-
     await ctx.db.patch(loanId, {
       status: "active",
-      interestAmount: schedule.totalInterest,
-      totalRepayable: schedule.totalRepayable,
+      interestRate,
+      interestAmount: totalInterest,
+      totalRepayable,
       processingFee,
       insuranceFee,
       amountDisbursed,
-      monthlyRepayment: schedule.monthlyRepayment,
-      outstandingBalance: schedule.totalRepayable,
+      monthlyRepayment,
+      outstandingBalance: totalRepayable,
       disbursementDate: disbursementDate.toISOString().slice(0, 10),
-      maturityDate: maturityDate.toISOString().slice(0, 10),
+      maturityDate: maturityDateStr,
       disbursedBy: admin._id,
     });
 
-    for (const installment of schedule.installments) {
+    for (const installment of installments) {
       await ctx.db.insert("loanSchedule", {
         loanId,
         installmentNumber: BigInt(installment.installmentNumber),
