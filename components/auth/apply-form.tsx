@@ -206,7 +206,15 @@ export function ApplyForm() {
                 <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue>
+                        {(value: "male" | "female" | null) =>
+                          value === "male"
+                            ? "Male"
+                            : value === "female"
+                              ? "Female"
+                              : "Select gender"
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

@@ -57,6 +57,12 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   shares_capital: "Capital shares",
 };
 
+const CHANNEL_LABEL: Record<string, string> = {
+  mpesa: "M-Pesa",
+  bank_transfer: "Bank transfer",
+  cash: "Cash",
+};
+
 export function RecordDepositDialog() {
   const recordDirect = useMutation(api.depositClaims.mutations.recordDirect);
   const [open, setOpen] = useState(false);
@@ -207,7 +213,11 @@ export function RecordDepositDialog() {
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue />
+                            <SelectValue>
+                              {(value: string | null) =>
+                                value ? ACCOUNT_TYPE_LABEL[value] : ""
+                              }
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -244,7 +254,11 @@ export function RecordDepositDialog() {
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue />
+                            <SelectValue>
+                              {(value: string | null) =>
+                                value ? CHANNEL_LABEL[value] : ""
+                              }
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

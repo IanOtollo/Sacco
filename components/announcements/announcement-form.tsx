@@ -28,6 +28,18 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 
+const PRIORITY_LABEL: Record<string, string> = {
+  normal: "Normal",
+  important: "Important",
+  urgent: "Urgent",
+};
+
+const AUDIENCE_LABEL: Record<string, string> = {
+  all: "Everyone",
+  members: "Members only",
+  admins: "Admins only",
+};
+
 const schema = z.object({
   title: z.string().min(1, "Required"),
   content: z.string().min(1, "Required"),
@@ -122,7 +134,9 @@ export function AnnouncementForm({
                 <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value: string | null) => PRIORITY_LABEL[value ?? ""] ?? ""}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -144,7 +158,9 @@ export function AnnouncementForm({
                 <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value: string | null) => AUDIENCE_LABEL[value ?? ""] ?? ""}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

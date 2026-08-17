@@ -53,6 +53,12 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   shares_capital: "Capital shares",
 };
 
+const CHANNEL_LABEL: Record<string, string> = {
+  mpesa: "M-Pesa",
+  bank_transfer: "Bank transfer",
+  cash: "Cash",
+};
+
 export function SubmitDepositClaimDialog({
   open,
   onOpenChange,
@@ -157,7 +163,11 @@ export function SubmitDepositClaimDialog({
                       <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue />
+                            <SelectValue>
+                              {(value: string | null) =>
+                                value ? CHANNEL_LABEL[value] : ""
+                              }
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

@@ -223,7 +223,12 @@ export function IssueNonMemberLoanDialog() {
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a product" />
+                              <SelectValue>
+                                {(value: string | null) => {
+                                  const p = products?.find((p) => p._id === value);
+                                  return p ? `${p.name} · ${p.interestRate}% p.a.` : "Select a product";
+                                }}
+                              </SelectValue>
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>

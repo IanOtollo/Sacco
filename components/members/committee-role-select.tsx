@@ -76,7 +76,11 @@ export function CommitteeRoleSelect({
           onValueChange={(v) => setPending(v as CommitteeRole | "none")}
         >
           <SelectTrigger className="w-full max-w-48">
-            <SelectValue />
+            <SelectValue>
+              {(value: CommitteeRole | "none" | null) =>
+                ROLE_LABEL[value ?? "none"]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">{ROLE_LABEL.none}</SelectItem>

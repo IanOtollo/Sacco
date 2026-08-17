@@ -84,7 +84,11 @@ export function MembersPageClient() {
           onValueChange={(v) => setStatus(v as StatusFilter)}
         >
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue />
+            <SelectValue>
+              {(value: StatusFilter | null) =>
+                STATUS_OPTIONS.find((opt) => opt.value === value)?.label ?? ""
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((opt) => (
@@ -96,7 +100,11 @@ export function MembersPageClient() {
         </Select>
         <Select value={sort} onValueChange={(v) => setSort(v as MemberSort)}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue />
+            <SelectValue>
+              {(value: MemberSort | null) =>
+                SORT_OPTIONS.find((opt) => opt.value === value)?.label ?? ""
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {SORT_OPTIONS.map((opt) => (

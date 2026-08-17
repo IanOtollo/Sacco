@@ -28,6 +28,13 @@ import {
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 
+const PROJECT_STATUS_LABEL: Record<string, string> = {
+  planning: "Planning",
+  active: "Active",
+  completed: "Completed",
+  on_hold: "On hold",
+};
+
 const schema = z.object({
   name: z.string().min(1, "Required"),
   category: z.string().optional(),
@@ -168,7 +175,9 @@ export function ProjectForm({
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value: string | null) => PROJECT_STATUS_LABEL[value ?? ""] ?? ""}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

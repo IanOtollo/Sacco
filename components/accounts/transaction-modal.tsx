@@ -42,6 +42,12 @@ const ACCOUNT_TYPE_LABEL = {
   shares_capital: "Capital shares",
 } as const;
 
+const CHANNEL_LABEL: Record<string, string> = {
+  cash: "Cash",
+  mpesa: "M-Pesa",
+  bank_transfer: "Bank transfer",
+};
+
 const schema = z.object({
   amount: z
     .string()
@@ -147,7 +153,11 @@ export function TransactionModal({
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="w-full">
-                          <SelectValue />
+                          <SelectValue>
+                            {(value: string | null) =>
+                              value ? CHANNEL_LABEL[value] : ""
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
