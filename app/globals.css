@@ -59,11 +59,11 @@
 }
 
 :root {
-  --background: #E1F3E7;
+  --background: #D6EEDD;
   --foreground: #0F172A;
-  --card: #FFFFFF;
+  --card: #FBFDF9;
   --card-foreground: #0F172A;
-  --popover: #FFFFFF;
+  --popover: #FBFDF9;
   --popover-foreground: #0F172A;
   --primary: #0E9354;
   --primary-light: #17B968;
