@@ -251,8 +251,9 @@ export function LoanApplicationForm() {
             </dl>
           </Card>
           <p className="text-xs text-muted-foreground">
-            Submitting sends guarantor requests to the members above. Once
-            they all accept, your admin will review the application.
+            The members above will be listed as guarantors on your
+            application — make sure you&apos;ve already arranged this with
+            them. Your admin will review the application directly.
           </p>
         </div>
       )}

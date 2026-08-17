@@ -197,8 +197,10 @@ export const apply = mutation({
     const interestAmount = 0; // computed at disbursement once schedule is generated
     const loanNumber = await generateLoanNumber(ctx, product.code);
 
-    const requiresGuarantors = Number(product.requiredGuarantors) > 0;
-
+    // Guarantors are informational only — the borrower has already arranged
+    // this with them offline, so they're recorded straight away rather than
+    // routed through an accept/decline step. The loan goes straight to the
+    // admin review queue.
     const loanId = await ctx.db.insert("loans", {
       loanNumber,
       memberId,
@@ -216,10 +218,11 @@ export const apply = mutation({
       totalPaid: 0,
       outstandingBalance: 0,
       arrearsAmount: 0,
-      status: requiresGuarantors ? "pending_guarantors" : "pending_approval",
+      status: "pending_approval",
       appliedAt: new Date().toISOString(),
     });
 
+    const now = new Date().toISOString();
     for (const guarantorMemberId of args.guarantorMemberIds) {
       const guarantorMember = await ctx.db.get(guarantorMemberId);
       if (!guarantorMember) continue;
@@ -229,14 +232,15 @@ export const apply = mutation({
         guarantorMemberId,
         borrowerMemberId: memberId,
         amountGuaranteed: args.principalAmount / args.guarantorMemberIds.length,
-        status: "pending",
+        status: "accepted",
+        respondedAt: now,
       });
 
       if (guarantorMember.userId) {
         await notify(ctx, {
           recipientUserId: guarantorMember.userId,
-          title: "Guarantor request",
-          message: `${member.firstName} ${member.lastName} has asked you to guarantee their ${product.name} of KES ${args.principalAmount.toLocaleString()}.`,
+          title: "You've been listed as a guarantor",
+          message: `${member.firstName} ${member.lastName} has listed you as a guarantor for their ${product.name} of KES ${args.principalAmount.toLocaleString()}.`,
           type: "guarantor_request",
           relatedEntityType: "loan",
           relatedEntityId: loanId,
@@ -245,20 +249,18 @@ export const apply = mutation({
       }
     }
 
-    if (!requiresGuarantors) {
-      const admins = await ctx.db.query("users").collect();
-      for (const a of admins) {
-        if (a.role === "admin" || a.role === "super_admin") {
-          await notify(ctx, {
-            recipientUserId: a._id,
-            title: "New loan application",
-            message: `${member.firstName} ${member.lastName} applied for a ${product.name} of KES ${args.principalAmount.toLocaleString()}.`,
-            type: "loan_update",
-            relatedEntityType: "loan",
-            relatedEntityId: loanId,
-            actionUrl: `/admin/loans/${loanId}`,
-          });
-        }
+    const admins = await ctx.db.query("users").collect();
+    for (const a of admins) {
+      if (a.role === "admin" || a.role === "super_admin") {
+        await notify(ctx, {
+          recipientUserId: a._id,
+          title: "New loan application",
+          message: `${member.firstName} ${member.lastName} applied for a ${product.name} of KES ${args.principalAmount.toLocaleString()}.`,
+          type: "loan_update",
+          relatedEntityType: "loan",
+          relatedEntityId: loanId,
+          actionUrl: `/admin/loans/${loanId}`,
+        });
       }
     }
 
@@ -271,87 +273,6 @@ export const apply = mutation({
     });
 
     return { loanId, loanNumber };
-  },
-});
-
-export const respondToGuarantorRequest = mutation({
-  args: {
-    guarantorId: v.id("guarantors"),
-    response: v.union(v.literal("accepted"), v.literal("declined")),
-    remarks: v.optional(v.string()),
-  },
-  handler: async (ctx, { guarantorId, response, remarks }) => {
-    const caller = await requireMemberProfile(ctx);
-    const guarantor = await ctx.db.get(guarantorId);
-    if (!guarantor) throw new Error("Guarantor request not found");
-    if (guarantor.guarantorMemberId !== caller.memberId) {
-      throw new Error("Not authorized");
-    }
-    if (guarantor.status !== "pending") {
-      throw new Error("This request has already been responded to");
-    }
-
-    await ctx.db.patch(guarantorId, {
-      status: response,
-      respondedAt: new Date().toISOString(),
-      remarks,
-    });
-
-    const loan = await ctx.db.get(guarantor.loanId);
-    const borrower = await ctx.db.get(guarantor.borrowerMemberId);
-    const guarantorMember = await ctx.db.get(guarantor.guarantorMemberId);
-
-    if (loan && borrower?.userId) {
-      await notify(ctx, {
-        recipientUserId: borrower.userId,
-        title: response === "accepted" ? "Guarantor accepted" : "Guarantor declined",
-        message: `${guarantorMember?.firstName} ${guarantorMember?.lastName} has ${response} your guarantee request.`,
-        type: "guarantor_request",
-        relatedEntityType: "loan",
-        relatedEntityId: loan._id,
-        actionUrl: `/portal/loans/${loan._id}`,
-      });
-    }
-
-    if (loan && loan.status === "pending_guarantors") {
-      if (response === "declined") {
-        // Borrower stays in pending_guarantors; they can apply again with a
-        // different guarantor for now (in-place guarantor swap is a
-        // follow-up enhancement).
-      } else {
-        const allGuarantors = await ctx.db
-          .query("guarantors")
-          .withIndex("by_loan", (q) => q.eq("loanId", loan._id))
-          .collect();
-        const allAccepted = allGuarantors.every((g) => g.status === "accepted");
-        if (allAccepted) {
-          await ctx.db.patch(loan._id, { status: "pending_approval" });
-
-          const admins = await ctx.db.query("users").collect();
-          for (const a of admins) {
-            if (a.role === "admin" || a.role === "super_admin") {
-              await notify(ctx, {
-                recipientUserId: a._id,
-                title: "Loan ready for review",
-                message: `${borrower?.firstName} ${borrower?.lastName}'s loan application now has all guarantors and is ready for review.`,
-                type: "loan_update",
-                relatedEntityType: "loan",
-                relatedEntityId: loan._id,
-                actionUrl: `/admin/loans/${loan._id}`,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    await logAction(ctx, {
-      userId: caller._id,
-      action: `guarantor.${response}`,
-      entityType: "guarantor",
-      entityId: guarantorId,
-      details: { loanId: guarantor.loanId },
-    });
   },
 });
 

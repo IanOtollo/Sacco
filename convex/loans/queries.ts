@@ -125,35 +125,6 @@ export const getById = query({
   },
 });
 
-export const getGuarantorRequests = query({
-  args: {},
-  handler: async (ctx) => {
-    const caller = await requireMemberProfile(ctx);
-    const requests = await ctx.db
-      .query("guarantors")
-      .withIndex("by_guarantor", (q) => q.eq("guarantorMemberId", caller.memberId!))
-      .collect();
-
-    requests.sort((a, b) => b._creationTime - a._creationTime);
-
-    return await Promise.all(
-      requests.map(async (g) => {
-        const [loan, borrower] = await Promise.all([
-          ctx.db.get(g.loanId),
-          ctx.db.get(g.borrowerMemberId),
-        ]);
-        const product = loan ? await ctx.db.get(loan.productId) : null;
-        return {
-          ...g,
-          loanAmount: loan?.principalAmount ?? 0,
-          productName: product?.name ?? "—",
-          borrowerName: borrower ? `${borrower.firstName} ${borrower.lastName}` : "—",
-        };
-      })
-    );
-  },
-});
-
 export const getMyGuarantees = query({
   args: {},
   handler: async (ctx) => {
