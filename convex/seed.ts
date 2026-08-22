@@ -380,3 +380,36 @@ export const seedSaccoSettings = internalMutation({
     return { created };
   },
 });
+
+// One-off migration: renumbers every existing loan onto the new global
+// EDULA-### sequence (see loans/helpers.ts generateLoanNumber), oldest
+// first, so old LN-{PRODUCT}-{date}-{seq} numbers don't linger in the UI.
+// Safe to re-run — already-EDULA-numbered loans are left untouched.
+// Reachable via `npx convex run seed:renumberLoans`.
+export const renumberLoans = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const loans = await ctx.db.query("loans").collect();
+    loans.sort((a, b) => a._creationTime - b._creationTime);
+
+    let seq = 0;
+    for (const loan of loans) {
+      if (loan.loanNumber.startsWith("EDULA-")) {
+        const n = parseInt(loan.loanNumber.slice("EDULA-".length), 10);
+        if (!Number.isNaN(n)) seq = Math.max(seq, n);
+      }
+    }
+
+    let renumbered = 0;
+    for (const loan of loans) {
+      if (loan.loanNumber.startsWith("EDULA-")) continue;
+      seq += 1;
+      await ctx.db.patch(loan._id, {
+        loanNumber: `EDULA-${String(seq).padStart(3, "0")}`,
+      });
+      renumbered++;
+    }
+
+    return { renumbered, total: loans.length };
+  },
+});
