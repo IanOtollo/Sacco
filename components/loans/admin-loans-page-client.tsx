@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +22,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils";
-import { HandCoins } from "lucide-react";
+import { HandCoins, BadgeCheck } from "lucide-react";
 import { IssueNonMemberLoanDialog } from "@/components/loans/issue-non-member-loan-dialog";
 
 const TABS = [
@@ -34,6 +34,7 @@ const TABS = [
 ] as const;
 
 function LoansTable({ status }: { status?: string }) {
+  const router = useRouter();
   const loans = useQuery(api.loans.queries.listAll, { status });
 
   if (loans === undefined) {
@@ -74,23 +75,21 @@ function LoansTable({ status }: { status?: string }) {
           {loans.map((loan, i) => (
             <TableRow
               key={loan._id}
-              className={i % 2 === 1 ? "bg-muted/20" : undefined}
+              onClick={() => router.push(`/admin/loans/${loan._id}`)}
+              className={`cursor-pointer hover:bg-muted/60 ${i % 2 === 1 ? "bg-muted/20" : ""}`}
             >
-              <TableCell>
-                <Link
-                  href={`/admin/loans/${loan._id}`}
-                  className="font-mono text-xs text-primary hover:underline"
-                >
-                  {loan.loanNumber}
-                </Link>
+              <TableCell className="font-mono text-xs text-primary">
+                {loan.loanNumber}
               </TableCell>
               <TableCell>
                 <span className="flex items-center gap-1.5">
                   {loan.memberName}
-                  {loan.isNonMember && (
+                  {loan.isNonMember ? (
                     <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[10px] font-medium text-secondary">
                       Non-member
                     </span>
+                  ) : (
+                    <BadgeCheck className="size-3.5 shrink-0 text-primary" />
                   )}
                 </span>
               </TableCell>
@@ -132,7 +131,9 @@ export function AdminLoansPageClient() {
             Loans
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review applications and manage the active loan book.
+            Review applications and manage the active loan book.{" "}
+            <BadgeCheck className="inline size-3.5 text-primary" /> marks a
+            verified Sacco member — everyone else is a non-member borrower.
           </p>
         </div>
         <IssueNonMemberLoanDialog />

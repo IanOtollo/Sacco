@@ -33,6 +33,7 @@ import {
   Banknote,
   Ban,
   Printer,
+  BadgeCheck,
 } from "lucide-react";
 
 export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
@@ -130,10 +131,12 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
                 >
                   {loan.member.firstName} {loan.member.lastName} ({loan.member.memberNumber})
                 </Link>
-                {loan.member.isNonMember && (
+                {loan.member.isNonMember ? (
                   <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
                     Non-member
                   </span>
+                ) : (
+                  <BadgeCheck className="size-4 shrink-0 text-primary" />
                 )}
               </div>
             )}
