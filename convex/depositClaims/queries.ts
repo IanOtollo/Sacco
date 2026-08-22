@@ -36,6 +36,18 @@ export const listPending = query({
   },
 });
 
+export const countPending = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireTreasurer(ctx);
+    const claims = await ctx.db
+      .query("depositClaims")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    return claims.length;
+  },
+});
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {

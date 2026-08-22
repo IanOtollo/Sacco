@@ -76,6 +76,7 @@ export const submit = mutation({
           type: "system",
           relatedEntityType: "depositClaim",
           relatedEntityId: claimId,
+          actionUrl: isAdmin ? "/admin/deposit-claims" : "/portal/deposit-claims",
         });
       }
     }

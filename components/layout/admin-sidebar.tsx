@@ -12,6 +12,7 @@ import { ROUTES } from "@/lib/constants";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarLogoutButton } from "@/components/layout/sidebar-logout-button";
 import { BrandMark } from "@/components/shared/brand-mark";
+import { NavBadge } from "@/components/layout/nav-badge";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function AdminSidebar() {
   const saccoName = useQuery(api.settings.queries.getSaccoName);
   const currentUser = useQuery(api.users.getCurrentUser);
   const hasMemberProfile = !!currentUser?.memberId;
+  const pendingDepositClaims = useQuery(api.depositClaims.queries.countPending);
 
   return (
     <aside
@@ -63,6 +65,8 @@ export function AdminSidebar() {
             item.href === "/admin"
               ? pathname === "/admin"
               : pathname.startsWith(item.href);
+          const badgeCount =
+            item.href === ROUTES.ADMIN_DEPOSIT_CLAIMS ? pendingDepositClaims : undefined;
           const link = (
             <Link
               key={item.href}
@@ -74,8 +78,16 @@ export function AdminSidebar() {
                 collapsed && "justify-center px-0"
               )}
             >
-              <item.icon className="size-4 shrink-0" />
+              <span className="relative shrink-0">
+                <item.icon className="size-4" />
+                {collapsed && !!badgeCount && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-medium text-danger-foreground">
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </span>
+                )}
+              </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && !!badgeCount && <NavBadge count={badgeCount} />}
             </Link>
           );
 

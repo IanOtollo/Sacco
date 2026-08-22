@@ -67,9 +67,16 @@ export function DepositClaimsPageClient() {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
-            Deposit claims
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading text-2xl font-bold tracking-tight">
+              Deposit claims
+            </h1>
+            {!!claims?.length && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-medium text-danger-foreground">
+                {claims.length > 99 ? "99+" : claims.length}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Confirm member-reported deposits against the actual transaction,
             or record one directly.
