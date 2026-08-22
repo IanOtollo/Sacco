@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
   Dialog,
@@ -15,6 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import type { Doc } from "@/convex/_generated/dataModel";
+
+const INVITOR_COMMISSION = 200;
+
+export type ApplicationWithInvitor = Doc<"membershipApplications"> & {
+  invitorName?: string | null;
+  invitorMemberNumber?: string | null;
+};
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -30,23 +38,28 @@ export function ApproveApplicationDialog({
   open,
   onOpenChange,
 }: {
-  application: Doc<"membershipApplications">;
+  application: ApplicationWithInvitor;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const approve = useMutation(api.membershipApplications.mutations.approve);
+  const registrationFee = useQuery(api.settings.queries.getPublicRegistrationFee);
   const [submitting, setSubmitting] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [feeConfirmed, setFeeConfirmed] = useState(false);
 
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
-    if (!next) setApproved(false);
+    if (!next) {
+      setApproved(false);
+      setFeeConfirmed(false);
+    }
   }
 
   async function handleApprove() {
     setSubmitting(true);
     try {
-      await approve({ applicationId: application._id });
+      await approve({ applicationId: application._id, confirmFeeReceived: feeConfirmed });
       setApproved(true);
       toast.success("Application approved");
     } catch (error) {
@@ -57,6 +70,10 @@ export function ApproveApplicationDialog({
       setSubmitting(false);
     }
   }
+
+  const fee = registrationFee ?? 500;
+  const invitorCommission = Math.min(INVITOR_COMMISSION, fee);
+  const saccoShare = application.invitorMemberId ? fee - invitorCommission : fee;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -107,11 +124,43 @@ export function ApproveApplicationDialog({
                 label="Registration number"
                 value={application.registrationNumber}
               />
+              <Detail
+                label="Invited by"
+                value={
+                  application.invitorName
+                    ? `${application.invitorName} (${application.invitorMemberNumber})`
+                    : "None"
+                }
+              />
             </dl>
+
+            <div className="rounded-lg border border-border/50 p-4 text-sm">
+              <p className="font-medium">
+                Registration fee — KES {fee.toLocaleString()}
+              </p>
+              {application.invitorMemberId ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  KES {invitorCommission.toLocaleString()} goes to {application.invitorName}{" "}
+                  as referral commission, KES {saccoShare.toLocaleString()} to the Sacco.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No invitor selected — the full amount goes to the Sacco.
+                </p>
+              )}
+              <label className="mt-3 flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={feeConfirmed}
+                  onCheckedChange={(checked) => setFeeConfirmed(checked === true)}
+                />
+                I confirm the KES {fee.toLocaleString()} registration fee was received
+              </label>
+            </div>
+
             <Button
               className="w-full"
               size="lg"
-              disabled={submitting}
+              disabled={submitting || !feeConfirmed}
               onClick={handleApprove}
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}

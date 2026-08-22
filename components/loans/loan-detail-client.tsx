@@ -12,8 +12,9 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RepaymentSchedule } from "@/components/loans/repayment-schedule";
 import { MakePaymentModal } from "@/components/loans/make-payment-modal";
+import { LoanPrintSheet } from "@/components/loans/loan-print-sheet";
 import { formatDate } from "@/lib/utils";
-import { HandCoins, CreditCard } from "lucide-react";
+import { HandCoins, CreditCard, Printer } from "lucide-react";
 
 export function LoanDetailClient({ loanId }: { loanId: string }) {
   const loan = useQuery(api.loans.queries.getById, {
@@ -41,7 +42,8 @@ export function LoanDetailClient({ loanId }: { loanId: string }) {
   const canPay = ["active", "disbursed"].includes(loan.status);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <>
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8 print:hidden">
       <Card className="rounded-2xl border-border/50 p-6">
         <div className="flex items-start justify-between">
           <div>
@@ -52,7 +54,17 @@ export function LoanDetailClient({ loanId }: { loanId: string }) {
               {loan.loanNumber}
             </p>
           </div>
-          <StatusBadge status={loan.status} />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.print()}
+            >
+              <Printer className="size-3.5" />
+              Print
+            </Button>
+            <StatusBadge status={loan.status} />
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
@@ -126,6 +138,9 @@ export function LoanDetailClient({ loanId }: { loanId: string }) {
         loanId={loan._id}
         monthlyRepayment={loan.monthlyRepayment}
       />
-    </div>
+      </div>
+
+      <LoanPrintSheet loan={loan} />
+    </>
   );
 }

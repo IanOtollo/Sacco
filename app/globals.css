@@ -188,3 +188,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklab, currentColor 40%, transparent);
 }
+
+/* Printable documents (loan statements, etc.) render on a plain white page —
+   the tinted app background and card padding aren't relevant on paper. */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  main {
+    min-height: 0 !important;
+  }
+}

@@ -94,7 +94,13 @@ function LoansTable({ status }: { status?: string }) {
                   )}
                 </span>
               </TableCell>
-              <TableCell>{loan.productName}</TableCell>
+              <TableCell>
+                {loan.nonMemberLoanCategory === "emergency"
+                  ? "Emergency Loan"
+                  : loan.nonMemberLoanCategory === "development"
+                    ? "Development Loan"
+                    : loan.productName}
+              </TableCell>
               <TableCell className="text-right">
                 <CurrencyDisplay amount={loan.principalAmount} />
               </TableCell>

@@ -33,6 +33,7 @@ export const createMemberRecord = internalMutation({
     phoneNumber: v.string(),
     userId: v.id("users"),
     registeredBy: v.id("users"),
+    invitedBy: v.optional(v.id("members")),
   },
   returns: v.object({
     memberId: v.id("members"),
@@ -66,6 +67,7 @@ export const createMemberRecord = internalMutation({
       status: "active",
       userId: args.userId,
       registeredBy: args.registeredBy,
+      invitedBy: args.invitedBy,
     });
 
     await ctx.db.patch(args.userId, { memberId });

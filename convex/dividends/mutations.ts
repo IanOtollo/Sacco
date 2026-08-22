@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { requireTreasurer } from "../authz";
+import { requireTreasurer, requireMemberProfile } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
@@ -12,6 +12,7 @@ function round2(n: number): number {
 export const declare = mutation({
   args: {
     financialYear: v.string(),
+    round: v.union(v.literal("first"), v.literal("second")),
     totalPool: v.number(),
     ratePercent: v.number(),
   },
@@ -20,6 +21,7 @@ export const declare = mutation({
 
     const dividendId = await ctx.db.insert("dividends", {
       financialYear: args.financialYear,
+      round: args.round,
       totalPool: args.totalPool,
       ratePercent: args.ratePercent,
       declaredDate: new Date().toISOString().slice(0, 10),
@@ -74,6 +76,11 @@ export const distribute = mutation({
     if (dividend.status !== "declared") {
       throw new Error("Only declared dividends can be distributed");
     }
+    if ((dividend.round ?? "first") !== "first") {
+      throw new Error(
+        "Second-round dividends aren't bulk-distributed — each member redeems their own share from the portal"
+      );
+    }
 
     await ctx.db.patch(dividendId, { status: "processing" });
 
@@ -113,7 +120,7 @@ export const distribute = mutation({
         amount: payout.amount,
         balanceBefore,
         balanceAfter,
-        description: `Dividend — ${dividend.financialYear}`,
+        description: `Dividend (1st share) — ${dividend.financialYear}`,
         referenceNumber: generateReferenceNumber(),
         processedBy: admin._id,
         channel: "system",
@@ -147,6 +154,69 @@ export const distribute = mutation({
     });
 
     return { credited };
+  },
+});
+
+export const redeem = mutation({
+  args: { payoutId: v.id("dividendPayouts") },
+  handler: async (ctx, { payoutId }) => {
+    const caller = await requireMemberProfile(ctx);
+
+    const payout = await ctx.db.get(payoutId);
+    if (!payout) throw new Error("Payout not found");
+    if (payout.memberId !== caller.memberId) {
+      throw new Error("This payout doesn't belong to you");
+    }
+    if (payout.status !== "pending") {
+      throw new Error("This dividend has already been redeemed");
+    }
+
+    const dividend = await ctx.db.get(payout.dividendId);
+    if (!dividend) throw new Error("Dividend not found");
+    if ((dividend.round ?? "first") !== "second") {
+      throw new Error("Only second-round dividends are redeemed individually");
+    }
+    if (dividend.status === "cancelled") {
+      throw new Error("This dividend has been cancelled");
+    }
+
+    const savingsAccount = await ctx.db
+      .query("accounts")
+      .withIndex("by_member_type", (q) =>
+        q.eq("memberId", payout.memberId).eq("type", "savings")
+      )
+      .first();
+    if (!savingsAccount) throw new Error("No savings account found");
+
+    const balanceBefore = savingsAccount.balance;
+    const balanceAfter = round2(balanceBefore + payout.amount);
+    await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+
+    await ctx.db.insert("transactions", {
+      accountId: savingsAccount._id,
+      memberId: payout.memberId,
+      type: "dividend_credit",
+      amount: payout.amount,
+      balanceBefore,
+      balanceAfter,
+      description: `Dividend (2nd share) — ${dividend.financialYear}`,
+      referenceNumber: generateReferenceNumber(),
+      processedBy: caller._id,
+      channel: "system",
+      status: "completed",
+    });
+
+    await ctx.db.patch(payoutId, { status: "credited" });
+
+    await logAction(ctx, {
+      userId: caller._id,
+      action: "dividend.redeem",
+      entityType: "dividendPayout",
+      entityId: payoutId,
+      details: { amount: payout.amount, financialYear: dividend.financialYear },
+    });
+
+    return { amount: payout.amount };
   },
 });
 

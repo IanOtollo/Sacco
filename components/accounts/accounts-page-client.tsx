@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { TransactionTable } from "@/components/accounts/transaction-table";
 import { SubmitDepositClaimDialog } from "@/components/accounts/submit-deposit-claim-dialog";
+import { PaybillCard } from "@/components/shared/paybill-info";
 import { Wallet, Banknote, CalendarClock, Landmark, PlusCircle } from "lucide-react";
 
 type AccountType = "savings" | "shares_long_term" | "shares_short_term" | "shares_capital";
@@ -45,14 +46,17 @@ export function AccountsPageClient() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">
-          My accounts
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Made a deposit? Report it below and your treasurer will confirm it
-          against the transaction before crediting your account.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight">
+            My accounts
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Made a deposit? Report it below and your treasurer will confirm it
+            against the transaction before crediting your account.
+          </p>
+        </div>
+        <PaybillCard title="Deposit via M-Pesa" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

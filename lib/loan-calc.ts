@@ -104,20 +104,33 @@ export function calculateLoanSchedule(params: {
   };
 }
 
-// Non-member loans are short, collateral-backed, and repaid as a single
-// lump sum rather than monthly installments — a "2-week loan" doesn't fit
-// a monthly amortization schedule. Interest is a flat one-time charge on
-// the principal, banded by how many days the loan runs.
-export function resolveNonMemberInterestRate(termDays: number): number {
-  if (termDays < 14) return 11.3;
-  if (termDays < 30) return 20.3;
-  if (termDays <= 31) return 30.3;
-  return 23;
+// Emergency loans (non-members) are short, collateral-backed, and repaid as
+// a single lump sum rather than monthly installments — a "2-week loan"
+// doesn't fit a monthly amortization schedule. Interest is a flat one-time
+// charge on the principal, banded by how many days the loan runs. Capped at
+// 4 weeks — anything longer is a Development loan instead.
+export function resolveEmergencyLoanRate(termDays: number): number {
+  if (termDays <= 7) return 10.23;
+  if (termDays <= 14) return 20.23;
+  if (termDays <= 28) return 30.23;
+  throw new Error("Emergency loans run for at most 4 weeks (28 days)");
+}
+
+// Development loans (non-members) run for one or more months and are
+// repaid in monthly installments like a member loan (see
+// calculateLoanSchedule with method "flat_total"). The flat rate charged on
+// the principal climbs 4 points for every extra month of term.
+export function resolveDevelopmentLoanRate(termMonths: number): number {
+  if (!Number.isInteger(termMonths) || termMonths < 1) {
+    throw new Error("Development loan term must be a whole number of months");
+  }
+  return round2(18.23 + 4 * (termMonths - 1));
 }
 
 export function calculateBulletLoan(params: {
   principal: number;
   termDays: number;
+  interestRate: number;
   disbursementDate: Date;
 }): {
   interestRate: number;
@@ -126,8 +139,7 @@ export function calculateBulletLoan(params: {
   dueDate: string;
   installments: ScheduleInstallment[];
 } {
-  const { principal, termDays, disbursementDate } = params;
-  const interestRate = resolveNonMemberInterestRate(termDays);
+  const { principal, termDays, interestRate, disbursementDate } = params;
   const totalInterest = round2(principal * (interestRate / 100));
   const totalRepayable = round2(principal + totalInterest);
 

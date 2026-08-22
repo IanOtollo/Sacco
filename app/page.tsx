@@ -10,6 +10,7 @@ import { AuthPanel } from "@/components/auth/auth-panel";
 import { MobileScrollIndicator } from "@/components/landing/mobile-scroll-indicator";
 import { LegalDocumentDialog } from "@/components/landing/legal-document-dialog";
 import { BrandMark } from "@/components/shared/brand-mark";
+import { PaybillInline } from "@/components/shared/paybill-info";
 import {
   PiggyBank,
   HandCoins,
@@ -63,7 +64,7 @@ export default async function LandingPage() {
         <section className="bg-primary/[0.04] py-20 px-4 sm:px-6 lg:px-12">
           <div className="mx-auto max-w-2xl">
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-              Save together. Borrow smart. Grow as one.
+              EDULAEPE SAVE SAFELY & GROW.
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
               {saccoInfo.name} helps members build savings, access affordable
@@ -162,7 +163,10 @@ export default async function LandingPage() {
                 </div>
               )}
             </div>
-            <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-6 border-t border-border pt-6">
+              <PaybillInline />
+            </div>
+            <div className="mt-6 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
                 &copy; {new Date().getFullYear()} {saccoInfo.name}. All rights
                 reserved.

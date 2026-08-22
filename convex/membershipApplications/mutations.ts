@@ -7,6 +7,7 @@ import { requireAdmin } from "../authz";
 import { logAction, logSystemAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { internal } from "../_generated/api";
+import { Doc } from "../_generated/dataModel";
 
 const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
@@ -23,6 +24,10 @@ export const submit = action({
     gender: genderValidator,
     registrationNumber: v.string(),
     password: v.string(),
+    // Existing member the applicant credits with inviting them, picked from
+    // the search box on the sign-up form. Optional — not everyone was
+    // referred.
+    invitorMemberId: v.optional(v.id("members")),
     // Honeypot — real users never see or fill this field; bots that
     // auto-fill every input do. Silently no-op if it's non-empty.
     website: v.optional(v.string()),
@@ -70,6 +75,7 @@ export const submit = action({
       phoneNumber: phone,
       gender: args.gender,
       registrationNumber: args.registrationNumber,
+      invitorMemberId: args.invitorMemberId,
     });
 
     return { ok: true };
@@ -113,10 +119,22 @@ export const recordApplication = internalMutation({
     phoneNumber: v.string(),
     gender: genderValidator,
     registrationNumber: v.string(),
+    invitorMemberId: v.optional(v.id("members")),
   },
   handler: async (ctx, args) => {
+    // Validate softly — a stale/invalid invitor pick shouldn't block the
+    // whole application, it just gets dropped.
+    let invitorMemberId = args.invitorMemberId;
+    if (invitorMemberId) {
+      const invitor = await ctx.db.get(invitorMemberId);
+      if (!invitor || invitor.status !== "active" || invitor.isNonMember) {
+        invitorMemberId = undefined;
+      }
+    }
+
     const applicationId = await ctx.db.insert("membershipApplications", {
       ...args,
+      invitorMemberId,
       status: "pending",
     });
 
@@ -143,17 +161,30 @@ export const recordApplication = internalMutation({
   },
 });
 
+// The invitor's cut of the registration fee — fixed, regardless of what the
+// fee itself is set to (see settings financial.registrationFee). Whatever's
+// left of the fee is the Sacco's share.
+const INVITOR_REGISTRATION_COMMISSION = 200;
+
 // Admin just reads what the applicant already provided and confirms — no
 // re-keying of phone/gender, and next of kin is left for the member to add
 // themselves later from their own profile (see members.mutations.update).
+// Also requires the admin to explicitly confirm the registration fee was
+// received — membership can't be activated without it.
 export const approve = mutation({
-  args: { applicationId: v.id("membershipApplications") },
-  handler: async (ctx, { applicationId }) => {
+  args: {
+    applicationId: v.id("membershipApplications"),
+    confirmFeeReceived: v.boolean(),
+  },
+  handler: async (ctx, { applicationId, confirmFeeReceived }) => {
     const admin = await requireAdmin(ctx);
     const application = await ctx.db.get(applicationId);
     if (!application) throw new Error("Application not found");
     if (application.status !== "pending") {
       throw new Error("This application has already been reviewed");
+    }
+    if (!confirmFeeReceived) {
+      throw new Error("Confirm the registration fee was received before approving");
     }
 
     const phoneTaken = await ctx.db
@@ -164,6 +195,11 @@ export const approve = mutation({
       throw new Error("A member with this phone number is already registered.");
     }
 
+    let invitor: Doc<"members"> | null = null;
+    if (application.invitorMemberId) {
+      invitor = await ctx.db.get(application.invitorMemberId);
+    }
+
     const result = await ctx.runMutation(internal.members.mutations.createMemberRecord, {
       firstName: application.firstName,
       lastName: application.lastName,
@@ -172,6 +208,7 @@ export const approve = mutation({
       gender: application.gender,
       userId: application.userId,
       registeredBy: admin._id,
+      invitedBy: invitor?._id,
     });
 
     await ctx.db.patch(application.userId, {
@@ -184,7 +221,42 @@ export const approve = mutation({
       status: "approved",
       reviewedBy: admin._id,
       reviewedAt: new Date().toISOString(),
+      registrationFeeConfirmed: true,
     });
+
+    const feeSetting = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "financial.registrationFee"))
+      .first();
+    const registrationFee = Number(feeSetting?.value ?? 500);
+    // Clamp so a fee configured below the invitor's fixed cut can never
+    // send the Sacco's share negative.
+    const invitorCommission = Math.min(INVITOR_REGISTRATION_COMMISSION, registrationFee);
+    const saccoShare = registrationFee - invitorCommission;
+
+    if (invitor) {
+      await ctx.db.insert("commissions", {
+        memberId: invitor._id,
+        type: "registration",
+        amount: invitorCommission,
+        description: `Referral — ${application.firstName} ${application.lastName} joined`,
+        relatedMemberId: result.memberId,
+        applicationId,
+        status: "pending",
+      });
+
+      if (invitor.userId) {
+        await notify(ctx, {
+          recipientUserId: invitor.userId,
+          title: "Referral commission earned",
+          message: `KES ${invitorCommission.toLocaleString()} commission earned — ${application.firstName} ${application.lastName} joined using your invite.`,
+          type: "system",
+          relatedEntityType: "member",
+          relatedEntityId: result.memberId,
+          actionUrl: "/portal",
+        });
+      }
+    }
 
     await notify(ctx, {
       recipientUserId: application.userId,
@@ -200,7 +272,13 @@ export const approve = mutation({
       action: "membershipApplication.approve",
       entityType: "membershipApplication",
       entityId: applicationId,
-      details: { memberId: result.memberId },
+      details: {
+        memberId: result.memberId,
+        registrationFee,
+        invitorMemberId: invitor?._id,
+        invitorCommission: invitor ? invitorCommission : 0,
+        saccoShare: invitor ? saccoShare : registrationFee,
+      },
     });
   },
 });

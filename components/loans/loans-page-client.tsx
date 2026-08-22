@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { LoanCard } from "@/components/loans/loan-card";
+import { PaybillCard } from "@/components/shared/paybill-info";
 import {
   Table,
   TableBody,
@@ -44,6 +45,10 @@ export function LoansPageClient() {
             </Link>
           }
         />
+      </div>
+
+      <div className="mt-6">
+        <PaybillCard title="Repay via M-Pesa" />
       </div>
 
       {loans === undefined ? (

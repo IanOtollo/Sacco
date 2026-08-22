@@ -28,7 +28,7 @@ export function AdminMobileBottomBar() {
   );
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden print:hidden">
       {adminBottomBarNav.map((item) => {
         const active = isActivePath(pathname, item.href);
         return (

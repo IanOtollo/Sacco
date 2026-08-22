@@ -3,7 +3,8 @@ import { MutationCtx } from "../_generated/server";
 export {
   calculateLoanSchedule,
   calculateBulletLoan,
-  resolveNonMemberInterestRate,
+  resolveEmergencyLoanRate,
+  resolveDevelopmentLoanRate,
   type ScheduleInstallment,
 } from "../../lib/loan-calc";
 

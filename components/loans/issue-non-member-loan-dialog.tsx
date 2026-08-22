@@ -9,7 +9,7 @@ import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { normalizeKenyanPhone } from "@/lib/phone";
-import { resolveNonMemberInterestRate } from "@/lib/loan-calc";
+import { resolveEmergencyLoanRate, resolveDevelopmentLoanRate } from "@/lib/loan-calc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Form,
@@ -31,39 +38,62 @@ import {
 } from "@/components/ui/form";
 import { UserRoundX } from "lucide-react";
 
-const schema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
-  phoneNumber: z
-    .string()
-    .min(1, "Required")
-    .refine(
-      (v) => {
-        try {
-          normalizeKenyanPhone(v);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Enter a valid Kenyan phone number" }
-    ),
-  nationalId: z.string().min(1, "Required"),
-  principalAmount: z
-    .string()
-    .min(1, "Required")
-    .refine((v) => Number(v) > 0, "Enter an amount greater than zero"),
-  termDays: z
-    .string()
-    .min(1, "Required")
-    .refine(
-      (v) => Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 3650,
-      "Enter a whole number of days between 1 and 3650"
-    ),
-  purpose: z.string().min(1, "Required"),
-  collateralDescription: z.string().min(1, "Required for non-member loans"),
-  collateralValue: z.string().optional(),
-});
+const CATEGORY_LABEL: Record<string, string> = {
+  emergency: "Emergency loan (up to 4 weeks, lump sum)",
+  development: "Development loan (monthly installments)",
+};
+
+const schema = z
+  .object({
+    firstName: z.string().min(1, "Required"),
+    lastName: z.string().min(1, "Required"),
+    phoneNumber: z
+      .string()
+      .min(1, "Required")
+      .refine(
+        (v) => {
+          try {
+            normalizeKenyanPhone(v);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Enter a valid Kenyan phone number" }
+      ),
+    nationalId: z.string().min(1, "Required"),
+    principalAmount: z
+      .string()
+      .min(1, "Required")
+      .refine((v) => Number(v) > 0, "Enter an amount greater than zero"),
+    category: z.enum(["emergency", "development"]),
+    termDays: z.string().optional(),
+    termMonths: z.string().optional(),
+    purpose: z.string().min(1, "Required"),
+    collateralDescription: z.string().min(1, "Required for non-member loans"),
+    collateralValue: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.category === "emergency") {
+      const n = Number(data.termDays);
+      if (!data.termDays || !Number.isInteger(n) || n < 1 || n > 28) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["termDays"],
+          message: "Enter a whole number of days between 1 and 28",
+        });
+      }
+    } else {
+      const n = Number(data.termMonths);
+      if (!data.termMonths || !Number.isInteger(n) || n < 1 || n > 60) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["termMonths"],
+          message: "Enter a whole number of months between 1 and 60",
+        });
+      }
+    }
+  });
 
 type Values = z.infer<typeof schema>;
 
@@ -81,23 +111,49 @@ export function IssueNonMemberLoanDialog() {
       phoneNumber: "",
       nationalId: "",
       principalAmount: "",
+      category: "emergency",
       termDays: "",
+      termMonths: "",
       purpose: "",
       collateralDescription: "",
       collateralValue: "",
     },
   });
 
+  const category = useWatch({ control: form.control, name: "category" });
   const watchedAmount = useWatch({ control: form.control, name: "principalAmount" });
   const watchedTermDays = useWatch({ control: form.control, name: "termDays" });
-  const previewDays = Number(watchedTermDays);
+  const watchedTermMonths = useWatch({ control: form.control, name: "termMonths" });
   const previewAmount = Number(watchedAmount);
-  const previewValid =
-    Number.isInteger(previewDays) && previewDays >= 1 && previewAmount > 0;
-  const previewRate = previewValid ? resolveNonMemberInterestRate(previewDays) : null;
-  const previewInterest = previewValid && previewRate != null
-    ? Math.round(previewAmount * (previewRate / 100) * 100) / 100
-    : null;
+
+  let previewRate: number | null = null;
+  let previewTermLabel = "";
+  if (previewAmount > 0) {
+    try {
+      if (category === "emergency") {
+        const days = Number(watchedTermDays);
+        if (Number.isInteger(days) && days >= 1) {
+          previewRate = resolveEmergencyLoanRate(days);
+          previewTermLabel = `${days} day${days === 1 ? "" : "s"}`;
+        }
+      } else {
+        const months = Number(watchedTermMonths);
+        if (Number.isInteger(months) && months >= 1) {
+          previewRate = resolveDevelopmentLoanRate(months);
+          previewTermLabel = `${months} month${months === 1 ? "" : "s"}`;
+        }
+      }
+    } catch {
+      previewRate = null;
+    }
+  }
+  const previewInterest =
+    previewRate != null ? Math.round(previewAmount * (previewRate / 100) * 100) / 100 : null;
+  const previewTotal = previewInterest != null ? previewAmount + previewInterest : null;
+  const previewMonthly =
+    category === "development" && previewTotal != null && Number(watchedTermMonths) > 0
+      ? Math.round((previewTotal / Number(watchedTermMonths)) * 100) / 100
+      : null;
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -116,7 +172,9 @@ export function IssueNonMemberLoanDialog() {
         phoneNumber: pending.phoneNumber,
         nationalId: pending.nationalId,
         principalAmount: Number(pending.principalAmount),
-        termDays: Number(pending.termDays),
+        category: pending.category,
+        termDays: pending.category === "emergency" ? Number(pending.termDays) : undefined,
+        termMonths: pending.category === "development" ? Number(pending.termMonths) : undefined,
         purpose: pending.purpose,
         collateralDescription: pending.collateralDescription,
         collateralValue: Number(pending.collateralValue || 0),
@@ -145,9 +203,7 @@ export function IssueNonMemberLoanDialog() {
             <DialogTitle>Issue a loan to a non-member</DialogTitle>
             <DialogDescription>
               For borrowers who aren&apos;t Sacco members — identified by
-              name, phone, and National ID. Collateral replaces guarantors,
-              and interest is a flat one-time charge repaid as a single lump
-              sum, banded by term length.
+              name, phone, and National ID. Collateral replaces guarantors.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -220,6 +276,35 @@ export function IssueNonMemberLoanDialog() {
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Loan type</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue>
+                                {(value: string | null) =>
+                                  value ? CATEGORY_LABEL[value] : ""
+                                }
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="emergency">
+                              {CATEGORY_LABEL.emergency}
+                            </SelectItem>
+                            <SelectItem value="development">
+                              {CATEGORY_LABEL.development}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="principalAmount"
                     render={({ field }) => (
                       <FormItem>
@@ -231,32 +316,55 @@ export function IssueNonMemberLoanDialog() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="termDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Term (days)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="e.g. 14" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {previewValid && previewRate != null && (
+                  {category === "emergency" ? (
+                    <FormField
+                      control={form.control}
+                      name="termDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Term (days, max 28)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g. 7" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="termMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Term (months)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g. 3" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {previewRate != null && (
                     <div className="sm:col-span-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-sm">
-                      Rate for {previewDays} day{previewDays === 1 ? "" : "s"}:{" "}
-                      <span className="font-semibold text-foreground">
-                        {previewRate}%
-                      </span>{" "}
-                      flat — interest of{" "}
+                      Rate for {previewTermLabel}:{" "}
+                      <span className="font-semibold text-foreground">{previewRate}%</span> flat
+                      — interest of{" "}
                       <span className="font-semibold text-foreground">
                         KES {previewInterest?.toLocaleString()}
                       </span>
-                      , repayable KES{" "}
-                      {(previewAmount + (previewInterest ?? 0)).toLocaleString()} in
-                      full at the end of the term.
+                      {category === "emergency" ? (
+                        <>
+                          , repayable KES {previewTotal?.toLocaleString()} in full at the end
+                          of the term.
+                        </>
+                      ) : (
+                        <>
+                          , repayable KES {previewTotal?.toLocaleString()} in{" "}
+                          {watchedTermMonths} equal monthly installments of KES{" "}
+                          {previewMonthly?.toLocaleString()}.
+                        </>
+                      )}
                     </div>
                   )}
                   <FormField
@@ -325,7 +433,7 @@ export function IssueNonMemberLoanDialog() {
         title="Issue this loan?"
         description={
           pending
-            ? `KES ${Number(pending.principalAmount).toLocaleString()} to ${pending.firstName} ${pending.lastName} (non-member) for ${pending.termDays} days, secured by: ${pending.collateralDescription}. This creates the loan pending approval.`
+            ? `KES ${Number(pending.principalAmount).toLocaleString()} to ${pending.firstName} ${pending.lastName} (non-member, ${CATEGORY_LABEL[pending.category]}) for ${pending.category === "emergency" ? `${pending.termDays} days` : `${pending.termMonths} months`}, secured by: ${pending.collateralDescription}. This creates the loan pending approval.`
             : ""
         }
         confirmLabel="Issue loan"

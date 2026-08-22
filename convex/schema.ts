@@ -137,6 +137,12 @@ export default defineSchema({
         v.literal("treasurer")
       )
     ),
+    // The member who referred this person, chosen on the sign-up form and
+    // set once at approval time (membershipApplications.mutations.approve).
+    // Drives two commissions — see the `commissions` table below: KES 200 of
+    // this member's registration fee, and 25% of every loan repayment this
+    // member later makes.
+    invitedBy: v.optional(v.id("members")),
   })
     .index("by_memberNumber", ["memberNumber"])
     .index("by_nationalId", ["nationalId"])
@@ -214,6 +220,9 @@ export default defineSchema({
     phoneNumber: v.string(),
     gender: v.union(v.literal("male"), v.literal("female")),
     registrationNumber: v.string(),
+    // Existing member the applicant named as their invitor, picked from a
+    // search on the sign-up form. Copied onto members.invitedBy on approval.
+    invitorMemberId: v.optional(v.id("members")),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -222,6 +231,10 @@ export default defineSchema({
     reviewedBy: v.optional(v.id("users")),
     reviewedAt: v.optional(v.string()),
     rejectionReason: v.optional(v.string()),
+    // Admin ticks this at approval time to confirm the KES 500 (configurable
+    // via settings financial.registrationFee) registration fee was actually
+    // received before membership is activated.
+    registrationFeeConfirmed: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
@@ -260,6 +273,7 @@ export default defineSchema({
       v.literal("interest_charge"),
       v.literal("penalty"),
       v.literal("registration_fee"),
+      v.literal("commission_credit"),
       v.literal("transfer")
     ),
     amount: v.float64(),
@@ -331,9 +345,17 @@ export default defineSchema({
     monthlyRepayment: v.float64(),
     termMonths: v.int64(),
     // Set instead of (and takes priority over) termMonths for non-member
-    // loans, which are priced and repaid as a single lump sum rather than
-    // monthly installments — see lib/loan-calc.ts calculateBulletLoan.
+    // Emergency loans specifically, which are priced and repaid as a single
+    // lump sum rather than monthly installments — see lib/loan-calc.ts
+    // calculateBulletLoan. Non-member Development loans use termMonths like
+    // a member loan does (see nonMemberLoanCategory below).
     termDays: v.optional(v.int64()),
+    // Which non-member loan type this is, if any — drives which rate table
+    // applied at issuance (see lib/loan-calc.ts resolveEmergencyLoanRate /
+    // resolveDevelopmentLoanRate) and how it's labeled in the UI.
+    nonMemberLoanCategory: v.optional(
+      v.union(v.literal("emergency"), v.literal("development"))
+    ),
     interestRate: v.float64(),
     purpose: v.string(),
     disbursementDate: v.optional(v.string()),
@@ -443,8 +465,16 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   // ─── DIVIDENDS ────────────────────────────────────
+  // Paid out twice a year, per financial year: the first share is credited
+  // to every member's savings account automatically when the treasurer
+  // distributes it; the second share is left as a claim each member must
+  // redeem themselves from the member portal — see mutations.distribute
+  // (round "first") and mutations.redeem (round "second").
   dividends: defineTable({
     financialYear: v.string(), // "2025-2026"
+    // Optional for backward compatibility with dividends declared before the
+    // two-round split — treat a missing round as "first" everywhere.
+    round: v.optional(v.union(v.literal("first"), v.literal("second"))),
     totalPool: v.float64(),
     ratePercent: v.float64(),
     declaredDate: v.string(),
@@ -473,6 +503,26 @@ export default defineSchema({
   })
     .index("by_dividend", ["dividendId"])
     .index("by_member", ["memberId"]),
+
+  // ─── COMMISSIONS ──────────────────────────────────
+  // Earned by a member for referring people to the Sacco: KES 200 of a new
+  // member's registration fee (see membershipApplications.mutations.approve)
+  // and 25% of every loan repayment their referred members go on to make
+  // (see loans/mutations.ts repay). Tracked here rather than credited
+  // straight to savings — members redeem their balance on their own
+  // schedule, same pattern as the dividend 2nd share.
+  commissions: defineTable({
+    memberId: v.id("members"), // the invitor who earns it
+    type: v.union(v.literal("registration"), v.literal("loan_repayment")),
+    amount: v.float64(),
+    description: v.string(),
+    relatedMemberId: v.optional(v.id("members")), // who they referred
+    applicationId: v.optional(v.id("membershipApplications")),
+    loanId: v.optional(v.id("loans")),
+    status: v.union(v.literal("pending"), v.literal("redeemed")),
+  })
+    .index("by_member", ["memberId"])
+    .index("by_member_status", ["memberId", "status"]),
 
   // ─── NOTIFICATIONS ────────────────────────────────
   notifications: defineTable({

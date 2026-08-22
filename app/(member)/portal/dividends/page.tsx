@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { DividendsPageClient } from "@/components/dividends/dividends-page-client";
+import { PortalDividendsGate } from "@/components/dividends/portal-dividends-gate";
 
 export const metadata: Metadata = { title: "Dividends" };
 
 export default function PortalDividendsPage() {
-  return <DividendsPageClient />;
+  return <PortalDividendsGate />;
 }

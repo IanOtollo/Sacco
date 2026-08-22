@@ -17,7 +17,7 @@ export function MemberTopbar({
   const saccoName = useQuery(api.settings.queries.getSaccoName);
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/40 bg-background/80 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/40 bg-background/80 px-4 backdrop-blur-md sm:px-6 print:hidden">
       <div className="lg:hidden">
         <span className="font-heading text-sm font-bold tracking-tight">
           {saccoName ?? "Edulaepe Credit and Saving"}

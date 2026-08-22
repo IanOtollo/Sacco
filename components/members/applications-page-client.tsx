@@ -6,16 +6,18 @@ import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ApproveApplicationDialog } from "@/components/members/approve-application-dialog";
+import {
+  ApproveApplicationDialog,
+  type ApplicationWithInvitor,
+} from "@/components/members/approve-application-dialog";
 import { RejectApplicationDialog } from "@/components/members/reject-application-dialog";
 import { formatDate } from "@/lib/utils";
 import { UserPlus } from "lucide-react";
-import type { Doc } from "@/convex/_generated/dataModel";
 
 export function ApplicationsPageClient() {
   const applications = useQuery(api.membershipApplications.queries.listPending);
-  const [reviewing, setReviewing] = useState<Doc<"membershipApplications"> | null>(null);
-  const [declining, setDeclining] = useState<Doc<"membershipApplications"> | null>(null);
+  const [reviewing, setReviewing] = useState<ApplicationWithInvitor | null>(null);
+  const [declining, setDeclining] = useState<ApplicationWithInvitor | null>(null);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -61,6 +63,7 @@ export function ApplicationsPageClient() {
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Applied {formatDate(application._creationTime)}
+                  {application.invitorName && ` · Invited by ${application.invitorName}`}
                 </p>
               </div>
               <div className="flex gap-2">

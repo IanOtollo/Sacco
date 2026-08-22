@@ -43,11 +43,18 @@ export const getMyPayouts = query({
       .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
       .collect();
 
-    return await Promise.all(
+    const withDividend = await Promise.all(
       payouts.map(async (p) => {
         const dividend = await ctx.db.get(p.dividendId);
-        return { ...p, financialYear: dividend?.financialYear ?? "—" };
+        return {
+          ...p,
+          financialYear: dividend?.financialYear ?? "—",
+          round: dividend?.round ?? "first",
+          dividendStatus: dividend?.status ?? "cancelled",
+        };
       })
     );
+
+    return withDividend.sort((a, b) => b._creationTime - a._creationTime);
   },
 });

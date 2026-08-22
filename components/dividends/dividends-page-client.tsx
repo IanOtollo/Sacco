@@ -38,15 +38,36 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatDate } from "@/lib/utils";
 import { Loader2, Plus, Coins, Send } from "lucide-react";
 
 const schema = z.object({
   financialYear: z.string().min(1, "Required"),
+  round: z.enum(["first", "second"]),
   totalPool: z.string().refine((v) => Number(v) > 0, "Enter a valid amount"),
   ratePercent: z.string().refine((v) => Number(v) > 0, "Enter a valid rate"),
 });
 type Values = z.infer<typeof schema>;
+
+const ROUND_LABEL: Record<string, string> = {
+  first: "1st share",
+  second: "2nd share",
+};
+
+function RoundBadge({ round }: { round: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary">
+      {ROUND_LABEL[round] ?? round}
+    </span>
+  );
+}
 
 function DeclareDividendDialog({
   open,
@@ -62,6 +83,7 @@ function DeclareDividendDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       financialYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      round: "first",
       totalPool: "",
       ratePercent: "",
     },
@@ -72,6 +94,7 @@ function DeclareDividendDialog({
     try {
       const result = await declare({
         financialYear: values.financialYear,
+        round: values.round,
         totalPool: Number(values.totalPool),
         ratePercent: Number(values.ratePercent),
       });
@@ -108,6 +131,31 @@ function DeclareDividendDialog({
                   <FormControl>
                     <Input disabled={submitting} {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="round"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Round</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={submitting}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value: string | null) =>
+                            value ? ROUND_LABEL[value] : ""
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="first">1st share — auto-credited to everyone</SelectItem>
+                      <SelectItem value="second">2nd share — members redeem it themselves</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -166,7 +214,7 @@ function PayoutsDialog({
         <DialogHeader>
           <DialogTitle>{dividend.financialYear} payouts</DialogTitle>
           <DialogDescription>
-            {dividend.ratePercent}% on shares balance
+            {ROUND_LABEL[dividend.round ?? "first"]} · {dividend.ratePercent}% on shares balance
           </DialogDescription>
         </DialogHeader>
         {payouts === undefined ? (
@@ -238,7 +286,9 @@ export function DividendsPageClient() {
             Dividends
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Declare and distribute annual dividends on member shares.
+            Declare each year&apos;s two dividend rounds — the 1st share is
+            distributed to everyone at once, the 2nd share is redeemed by
+            members individually.
           </p>
         </div>
         <Button onClick={() => setDeclareOpen(true)}>
@@ -266,6 +316,7 @@ export function DividendsPageClient() {
               <TableHeader>
                 <TableRow className="[&>th]:bg-muted/50">
                   <TableHead>Financial year</TableHead>
+                  <TableHead>Round</TableHead>
                   <TableHead className="text-right">Pool</TableHead>
                   <TableHead>Rate</TableHead>
                   <TableHead>Declared</TableHead>
@@ -280,6 +331,9 @@ export function DividendsPageClient() {
                     className={i % 2 === 1 ? "bg-muted/20" : undefined}
                   >
                     <TableCell className="font-medium">{d.financialYear}</TableCell>
+                    <TableCell>
+                      <RoundBadge round={d.round ?? "first"} />
+                    </TableCell>
                     <TableCell className="text-right">
                       <CurrencyDisplay amount={d.totalPool} />
                     </TableCell>
@@ -298,12 +352,17 @@ export function DividendsPageClient() {
                       >
                         View
                       </Button>
-                      {d.status === "declared" && (
-                        <Button size="sm" onClick={() => setDistributeId(d._id)}>
-                          <Send className="size-3.5" />
-                          Distribute
-                        </Button>
-                      )}
+                      {d.status === "declared" &&
+                        ((d.round ?? "first") === "first" ? (
+                          <Button size="sm" onClick={() => setDistributeId(d._id)}>
+                            <Send className="size-3.5" />
+                            Distribute
+                          </Button>
+                        ) : (
+                          <span className="self-center text-xs text-muted-foreground">
+                            Open for members to redeem
+                          </span>
+                        ))}
                     </TableCell>
                   </TableRow>
                 ))}

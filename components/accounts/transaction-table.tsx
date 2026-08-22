@@ -23,6 +23,7 @@ const CREDIT_TYPES = new Set([
   "loan_disbursement",
   "share_purchase",
   "dividend_credit",
+  "commission_credit",
 ]);
 
 export function TransactionTable({ accountId }: { accountId: Id<"accounts"> }) {

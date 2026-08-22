@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { PaybillCard } from "@/components/shared/paybill-info";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import {
   Wallet,
@@ -17,6 +21,7 @@ import {
   CreditCard,
   Megaphone,
   FileText,
+  Handshake,
 } from "lucide-react";
 
 function greeting() {
@@ -31,11 +36,24 @@ const CREDIT_TYPES = new Set([
   "loan_disbursement",
   "share_purchase",
   "dividend_credit",
+  "commission_credit",
 ]);
 
 export function MemberDashboardClient() {
   const user = useQuery(api.users.getCurrentUser);
   const data = useQuery(api.reports.queries.getMyDashboard);
+  const commission = useQuery(api.commissions.queries.getMySummary);
+  const redeemCommission = useMutation(api.commissions.mutations.redeem);
+  const [redeemOpen, setRedeemOpen] = useState(false);
+
+  async function handleRedeemCommission() {
+    try {
+      const result = await redeemCommission({});
+      toast.success(`KES ${result.amount.toLocaleString()} credited to your savings account`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not redeem commission");
+    }
+  }
 
   if (data === undefined) {
     return (
@@ -64,13 +82,43 @@ export function MemberDashboardClient() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">
-          {greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {formatDate(new Date().toISOString())}
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex-1 space-y-4">
+          <div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight">
+              {greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatDate(new Date().toISOString())}
+            </p>
+          </div>
+          <Card className="w-full max-w-xs rounded-2xl border-border/50 p-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-accent/20 text-accent-foreground">
+                <Handshake className="size-4" />
+              </div>
+              <span className="text-sm text-muted-foreground">Commission</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="text-2xl font-bold">
+                  <CurrencyDisplay amount={commission?.pending ?? 0} />
+                </div>
+                {commission && commission.redeemed > 0 && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    KES {commission.total.toLocaleString()} earned lifetime
+                  </p>
+                )}
+              </div>
+              {!!commission?.pending && (
+                <Button size="sm" variant="outline" onClick={() => setRedeemOpen(true)}>
+                  Redeem to savings
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+        <PaybillCard title="Fund your account via M-Pesa" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -239,6 +287,19 @@ export function MemberDashboardClient() {
           </div>
         </Card>
       )}
+
+      <ConfirmModal
+        open={redeemOpen}
+        onOpenChange={setRedeemOpen}
+        title="Redeem your commission?"
+        description={
+          commission?.pending
+            ? `KES ${commission.pending.toLocaleString()} will be credited to your savings account.`
+            : ""
+        }
+        confirmLabel="Redeem"
+        onConfirm={handleRedeemCommission}
+      />
     </div>
   );
 }

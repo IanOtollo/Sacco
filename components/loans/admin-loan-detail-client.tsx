@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { RepaymentSchedule } from "@/components/loans/repayment-schedule";
 import { MakePaymentModal } from "@/components/loans/make-payment-modal";
+import { LoanPrintSheet } from "@/components/loans/loan-print-sheet";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ import {
   X,
   Banknote,
   Ban,
+  Printer,
 } from "lucide-react";
 
 export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
@@ -105,12 +107,17 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+    <>
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8 print:hidden">
       <Card className="rounded-2xl border-border/50 p-6">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-heading text-xl font-bold tracking-tight">
-              {loan.product?.name}
+              {loan.nonMemberLoanCategory === "emergency"
+                ? "Emergency Loan"
+                : loan.nonMemberLoanCategory === "development"
+                  ? "Development Loan"
+                  : loan.product?.name}
             </h1>
             <p className="mt-0.5 font-mono text-xs text-muted-foreground">
               {loan.loanNumber}
@@ -131,7 +138,17 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
               </div>
             )}
           </div>
-          <StatusBadge status={loan.status} />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.print()}
+            >
+              <Printer className="size-3.5" />
+              Print
+            </Button>
+            <StatusBadge status={loan.status} />
+          </div>
         </div>
 
         <p className="mt-4 text-sm">
@@ -168,6 +185,12 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         {loan.termDays != null && (
           <p className="mt-3 text-sm text-muted-foreground">
             Term: {Number(loan.termDays)} day{Number(loan.termDays) === 1 ? "" : "s"} ·{" "}
+            {loan.interestRate}% flat interest
+          </p>
+        )}
+        {loan.termDays == null && loan.nonMemberLoanCategory === "development" && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Term: {Number(loan.termMonths)} month{Number(loan.termMonths) === 1 ? "" : "s"} ·{" "}
             {loan.interestRate}% flat interest
           </p>
         )}
@@ -328,5 +351,8 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         isNonMember={loan.member?.isNonMember}
       />
     </div>
+
+    <LoanPrintSheet loan={loan} />
+    </>
   );
 }

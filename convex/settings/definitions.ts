@@ -23,7 +23,7 @@ export const SETTINGS_DEFINITIONS = {
   },
   "financial.registrationFee": {
     description: "One-off registration fee (KES)",
-    default: "1000",
+    default: "500",
   },
   "financial.fyStartMonth": {
     description: "Financial year start month (1-12)",

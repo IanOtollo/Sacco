@@ -7,7 +7,8 @@ import {
   generateLoanNumber,
   calculateLoanSchedule,
   calculateBulletLoan,
-  resolveNonMemberInterestRate,
+  resolveEmergencyLoanRate,
+  resolveDevelopmentLoanRate,
 } from "./helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
 import { generateNonMemberNumber } from "../members/helpers";
@@ -19,10 +20,13 @@ import { normalizeNationalId } from "../../lib/national-id";
 // guarantor workflow entirely (guarantors are fellow members vouching;
 // non-members provide collateral instead) but still goes through the same
 // approve → disburse steps as any other loan for a second set of eyes on
-// the money movement. Priced per resolveNonMemberInterestRate — a flat,
-// one-time interest charge banded by how many days the loan runs, repaid
-// as a single lump sum rather than monthly installments — rather than a
-// loan-product-configured rate, so there's no product to pick.
+// the money movement. Two products, priced differently:
+// - Emergency: a flat, one-time charge banded by how many days the loan
+//   runs (up to 4 weeks), repaid as a single lump sum — see
+//   resolveEmergencyLoanRate / calculateBulletLoan.
+// - Development: a flat charge that climbs 4 points per month of term,
+//   repaid in monthly installments like a member loan — see
+//   resolveDevelopmentLoanRate.
 export const issueNonMemberLoan = mutation({
   args: {
     firstName: v.string(),
@@ -30,7 +34,9 @@ export const issueNonMemberLoan = mutation({
     phoneNumber: v.string(),
     nationalId: v.string(),
     principalAmount: v.number(),
-    termDays: v.number(),
+    category: v.union(v.literal("emergency"), v.literal("development")),
+    termDays: v.optional(v.number()),
+    termMonths: v.optional(v.number()),
     purpose: v.string(),
     collateralDescription: v.string(),
     collateralValue: v.number(),
@@ -55,11 +61,30 @@ export const issueNonMemberLoan = mutation({
         `Amount must be between KES ${product.minimumAmount.toLocaleString()} and KES ${product.maximumAmount.toLocaleString()}`
       );
     }
-    if (!Number.isInteger(args.termDays) || args.termDays < 1 || args.termDays > 3650) {
-      throw new Error("Term must be a whole number of days between 1 and 3650");
-    }
     if (!args.collateralDescription.trim()) {
       throw new Error("Collateral description is required for non-member loans");
+    }
+
+    let interestRate: number;
+    let termMonths: bigint;
+    let termDays: bigint | undefined;
+
+    if (args.category === "emergency") {
+      const days = args.termDays;
+      if (!days || !Number.isInteger(days) || days < 1 || days > 28) {
+        throw new Error("Emergency loans run for a whole number of days, up to 28");
+      }
+      interestRate = resolveEmergencyLoanRate(days);
+      termMonths = BigInt(Math.max(1, Math.ceil(days / 30)));
+      termDays = BigInt(days);
+    } else {
+      const months = args.termMonths;
+      if (!months || !Number.isInteger(months) || months < 1 || months > 60) {
+        throw new Error("Development loans run for a whole number of months, up to 60");
+      }
+      interestRate = resolveDevelopmentLoanRate(months);
+      termMonths = BigInt(months);
+      termDays = undefined;
     }
 
     const phone = normalizeKenyanPhone(args.phoneNumber);
@@ -90,7 +115,6 @@ export const issueNonMemberLoan = mutation({
     }
 
     const loanNumber = await generateLoanNumber(ctx, product.code);
-    const interestRate = resolveNonMemberInterestRate(args.termDays);
 
     const loanId = await ctx.db.insert("loans", {
       loanNumber,
@@ -103,8 +127,9 @@ export const issueNonMemberLoan = mutation({
       insuranceFee: 0,
       amountDisbursed: 0,
       monthlyRepayment: 0,
-      termMonths: BigInt(Math.max(1, Math.ceil(args.termDays / 30))),
-      termDays: BigInt(args.termDays),
+      termMonths,
+      termDays,
+      nonMemberLoanCategory: args.category,
       interestRate,
       purpose: args.purpose,
       totalPaid: 0,
@@ -124,7 +149,9 @@ export const issueNonMemberLoan = mutation({
       details: {
         loanNumber,
         amount: args.principalAmount,
+        category: args.category,
         termDays: args.termDays,
+        termMonths: args.termMonths,
         interestRate,
         borrowerName: `${args.firstName} ${args.lastName}`,
       },
@@ -389,6 +416,7 @@ export const disburse = mutation({
       const bullet = calculateBulletLoan({
         principal: loan.principalAmount,
         termDays: Number(loan.termDays),
+        interestRate: loan.interestRate,
         disbursementDate,
       });
       interestRate = bullet.interestRate;
@@ -612,6 +640,36 @@ export const repay = mutation({
         relatedEntityId: loanId,
         actionUrl: `/portal/loans/${loanId}`,
       });
+    }
+
+    // Referral commission — whoever invited this borrower to the Sacco
+    // earns 25% of every repayment they make, for the life of the loan.
+    if (member?.invitedBy) {
+      const invitor = await ctx.db.get(member.invitedBy);
+      const commission = round2(amount * 0.25);
+      if (invitor && commission > 0) {
+        await ctx.db.insert("commissions", {
+          memberId: invitor._id,
+          type: "loan_repayment",
+          amount: commission,
+          description: `Referral — ${member.firstName} ${member.lastName} repaid ${loan.loanNumber}`,
+          relatedMemberId: member._id,
+          loanId,
+          status: "pending",
+        });
+
+        if (invitor.userId) {
+          await notify(ctx, {
+            recipientUserId: invitor.userId,
+            title: "Referral commission earned",
+            message: `KES ${commission.toLocaleString()} commission earned from ${member.firstName} ${member.lastName}'s loan repayment.`,
+            type: "system",
+            relatedEntityType: "loan",
+            relatedEntityId: loanId,
+            actionUrl: "/portal",
+          });
+        }
+      }
     }
 
     await logAction(ctx, {

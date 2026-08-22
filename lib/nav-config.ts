@@ -61,6 +61,7 @@ export const memberSidebarNav: NavItem[] = [
   { label: "Home", href: ROUTES.PORTAL, icon: Home },
   { label: "Accounts", href: ROUTES.PORTAL_ACCOUNTS, icon: Wallet },
   { label: "Loans", href: ROUTES.PORTAL_LOANS, icon: HandCoins },
+  { label: "Dividends", href: ROUTES.PORTAL_DIVIDENDS, icon: PiggyBank },
   { label: "Guarantors", href: ROUTES.PORTAL_GUARANTORS, icon: Users },
   { label: "Projects", href: ROUTES.PORTAL_PROJECTS, icon: Sprout },
   { label: "Updates", href: ROUTES.PORTAL_UPDATES, icon: MessageSquare },
@@ -88,7 +89,6 @@ export function committeeNavItems(
     items.push(
       { label: "Deposit Claims", href: ROUTES.PORTAL_DEPOSIT_CLAIMS, icon: ReceiptText },
       { label: "Contributions", href: ROUTES.PORTAL_CONTRIBUTIONS, icon: Wallet },
-      { label: "Dividends", href: ROUTES.PORTAL_DIVIDENDS, icon: PiggyBank },
       { label: "Reports", href: ROUTES.PORTAL_REPORTS, icon: BarChart3 }
     );
   }

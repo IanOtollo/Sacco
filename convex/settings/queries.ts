@@ -31,6 +31,19 @@ export const getPublicSaccoInfo = query({
   },
 });
 
+// Public — shown on the unauthenticated sign-up form so applicants know
+// what to pay before an admin will approve them.
+export const getPublicRegistrationFee = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "financial.registrationFee"))
+      .first();
+    return Number(row?.value ?? SETTINGS_DEFINITIONS["financial.registrationFee"].default);
+  },
+});
+
 export const getAll = query({
   args: {},
   handler: async (ctx) => {

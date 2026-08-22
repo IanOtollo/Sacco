@@ -96,6 +96,34 @@ export const getById = query({
 
 // Minimal, non-financial fields for the guarantor picker — any authenticated
 // member can search for a fellow active member to ask as a guarantor.
+// Public — reachable from the logged-out sign-up form so applicants can
+// pick who invited them. Deliberately minimal: no phone/ID/balance data.
+export const searchForInvitor = query({
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, { search }) => {
+    const term = search?.toLowerCase().trim();
+    if (!term) return [];
+
+    const active = await ctx.db
+      .query("members")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    const filtered = active.filter((m) => {
+      if (m.isNonMember) return false;
+      return `${m.firstName} ${m.lastName} ${m.memberNumber}`
+        .toLowerCase()
+        .includes(term);
+    });
+
+    return filtered.slice(0, 20).map((m) => ({
+      _id: m._id,
+      memberNumber: m.memberNumber,
+      name: `${m.firstName} ${m.lastName}`,
+    }));
+  },
+});
+
 export const searchGuarantorCandidates = query({
   args: { search: v.optional(v.string()) },
   handler: async (ctx, { search }) => {

@@ -18,6 +18,8 @@ import type * as audit_queries from "../audit/queries.js";
 import type * as auth from "../auth.js";
 import type * as auth_actions from "../auth_actions.js";
 import type * as authz from "../authz.js";
+import type * as commissions_mutations from "../commissions/mutations.js";
+import type * as commissions_queries from "../commissions/queries.js";
 import type * as contributions_mutations from "../contributions/mutations.js";
 import type * as contributions_queries from "../contributions/queries.js";
 import type * as crons from "../crons.js";
@@ -71,6 +73,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   auth_actions: typeof auth_actions;
   authz: typeof authz;
+  "commissions/mutations": typeof commissions_mutations;
+  "commissions/queries": typeof commissions_queries;
   "contributions/mutations": typeof contributions_mutations;
   "contributions/queries": typeof contributions_queries;
   crons: typeof crons;

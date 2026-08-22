@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { PASSWORD_MIN_LENGTH } from "@/lib/password";
@@ -12,6 +12,9 @@ import { normalizeKenyanPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/shared/password-input";
+import { Label } from "@/components/ui/label";
+import { InvitorSelector, type InvitorCandidate } from "@/components/auth/invitor-selector";
+import { PaybillInline } from "@/components/shared/paybill-info";
 import {
   Select,
   SelectContent,
@@ -67,8 +70,10 @@ type Values = z.infer<typeof schema>;
 
 export function ApplyForm() {
   const submit = useAction(api.membershipApplications.mutations.submit);
+  const registrationFee = useQuery(api.settings.queries.getPublicRegistrationFee);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [invitor, setInvitor] = useState<InvitorCandidate | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -96,6 +101,7 @@ export function ApplyForm() {
         gender: values.gender,
         registrationNumber: values.registrationNumber,
         password: values.password,
+        invitorMemberId: invitor?._id,
         website: values.website || undefined,
       });
       setSubmitted(true);
@@ -118,8 +124,9 @@ export function ApplyForm() {
           Application submitted
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          A Sacco administrator will review your application. You&apos;ll be
-          able to sign in once it&apos;s approved.
+          A Sacco administrator will review your application and confirm your
+          registration fee. You&apos;ll be able to sign in once it&apos;s
+          approved.
         </p>
       </div>
     );
@@ -240,6 +247,29 @@ export function ApplyForm() {
             </FormItem>
           )}
         />
+
+        <div className="rounded-lg border border-border bg-muted/40 p-3">
+          <p className="text-sm font-medium">
+            A one-off KES {(registrationFee ?? 500).toLocaleString()}{" "}
+            registration fee applies
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Pay before you apply — your application is approved once the
+            Sacco confirms it was received.
+          </p>
+          <div className="mt-2">
+            <PaybillInline />
+          </div>
+        </div>
+
+        <div>
+          <Label>Invited by (optional)</Label>
+          <p className="mt-0.5 mb-2 text-xs text-muted-foreground">
+            Referred by an existing member? Select them below.
+          </p>
+          <InvitorSelector selected={invitor} onChange={setInvitor} />
+        </div>
+
         <FormField
           control={form.control}
           name="password"

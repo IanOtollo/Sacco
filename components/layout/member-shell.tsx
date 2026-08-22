@@ -14,7 +14,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
       <MemberSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <MemberTopbar name={user?.name} phone={user?.phone} />
-        <main className="flex-1 pb-20 lg:pb-0">{children}</main>
+        <main className="flex-1 pb-20 lg:pb-0 print:pb-0">{children}</main>
       </div>
       <MemberBottomBar />
     </div>

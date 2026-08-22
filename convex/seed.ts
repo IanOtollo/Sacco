@@ -248,11 +248,13 @@ export const seedLoanProducts = internalMutation({
 // One-off migration for the new interest rules: every member loan product
 // now charges a flat 10% of principal regardless of which product or term
 // is chosen (previously each product had its own rate/method). Also seeds
-// a placeholder "Non-Member Loan" product — non-member loans are priced
-// per lib/loan-calc.ts resolveNonMemberInterestRate (banded by loan term
-// in days) rather than a product-configured rate, but loans.productId is
-// still required, so this product exists to satisfy that reference; its
-// own interestRate/interestMethod fields are unused for non-member loans.
+// a placeholder "Non-Member Loan" product — Emergency and Development
+// non-member loans are priced per lib/loan-calc.ts
+// resolveEmergencyLoanRate/resolveDevelopmentLoanRate rather than a
+// product-configured rate, but loans.productId is still required, so this
+// product exists to satisfy that reference; its own interestRate field is
+// unused for non-member loans (interestMethod "flat_total" is used for
+// Development loan installment schedules).
 // Internal-only, reachable via `npx convex run seed:applyFlatInterestRules`.
 export const applyFlatInterestRules = internalMutation({
   args: {},
@@ -353,7 +355,7 @@ export const seedSaccoSettings = internalMutation({
         description: "Minimum monthly shares contribution (KES)",
       },
       "financial.registrationFee": {
-        value: "1000",
+        value: "500",
         description: "One-off registration fee (KES)",
       },
     };
