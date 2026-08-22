@@ -7,7 +7,6 @@ import { api } from "@/convex/_generated/api";
 import { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { AnnouncementForm } from "@/components/announcements/announcement-form";
 import { formatDate } from "@/lib/utils";
-import { Plus, Megaphone, Pencil, Trash2 } from "lucide-react";
+import { Plus, Megaphone, Pencil, Trash2, Send, EyeOff } from "lucide-react";
 
 const PRIORITY_TONE: Record<string, string> = {
   normal: "bg-muted text-muted-foreground",
@@ -39,11 +38,7 @@ export function AnnouncementsPageClient() {
   const [deleteTarget, setDeleteTarget] = useState<Doc<"announcements"> | null>(null);
   const [publishTarget, setPublishTarget] = useState<Doc<"announcements"> | null>(null);
 
-  async function handleTogglePublish(a: Doc<"announcements">) {
-    if (!a.isPublished) {
-      setPublishTarget(a);
-      return;
-    }
+  async function handleUnpublish(a: Doc<"announcements">) {
     try {
       await setPublished({ announcementId: a._id, isPublished: false });
       toast.success("Unpublished");
@@ -125,10 +120,17 @@ export function AnnouncementsPageClient() {
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <Switch
-                    checked={a.isPublished}
-                    onCheckedChange={() => handleTogglePublish(a)}
-                  />
+                  {a.isPublished ? (
+                    <Button size="sm" variant="outline" onClick={() => handleUnpublish(a)}>
+                      <EyeOff className="size-3.5" />
+                      Unpublish
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => setPublishTarget(a)}>
+                      <Send className="size-3.5" />
+                      Publish
+                    </Button>
+                  )}
                   <div className="flex gap-1">
                     <Button
                       size="icon-sm"

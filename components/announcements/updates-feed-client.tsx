@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +17,12 @@ const PRIORITY_TONE: Record<string, string> = {
 
 export function UpdatesFeedClient() {
   const announcements = useQuery(api.announcements.queries.listForMe);
+  const markAnnouncementsRead = useMutation(api.notifications.mutations.markAnnouncementsRead);
+
+  useEffect(() => {
+    markAnnouncementsRead({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">

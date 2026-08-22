@@ -24,6 +24,7 @@ export function MemberSidebar() {
     api.depositClaims.queries.countPending,
     isTreasurer ? {} : "skip"
   );
+  const unreadAnnouncements = useQuery(api.notifications.queries.getUnreadAnnouncementCount);
 
   const isTopOffice =
     currentUser?.committeeRole === "chairman" ||
@@ -91,7 +92,11 @@ export function MemberSidebar() {
               ? pathname === "/portal"
               : pathname.startsWith(item.href);
           const badgeCount =
-            item.href === ROUTES.PORTAL_DEPOSIT_CLAIMS ? pendingDepositClaims : undefined;
+            item.href === ROUTES.PORTAL_DEPOSIT_CLAIMS
+              ? pendingDepositClaims
+              : item.href === ROUTES.PORTAL_UPDATES
+                ? unreadAnnouncements
+                : undefined;
           const link = (
             <Link
               key={item.href}

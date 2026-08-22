@@ -21,6 +21,7 @@ export function AdminSidebar() {
   const currentUser = useQuery(api.users.getCurrentUser);
   const hasMemberProfile = !!currentUser?.memberId;
   const pendingDepositClaims = useQuery(api.depositClaims.queries.countPending);
+  const pendingApplications = useQuery(api.membershipApplications.queries.countPending);
 
   return (
     <aside
@@ -66,7 +67,11 @@ export function AdminSidebar() {
               ? pathname === "/admin"
               : pathname.startsWith(item.href);
           const badgeCount =
-            item.href === ROUTES.ADMIN_DEPOSIT_CLAIMS ? pendingDepositClaims : undefined;
+            item.href === ROUTES.ADMIN_DEPOSIT_CLAIMS
+              ? pendingDepositClaims
+              : item.href === ROUTES.ADMIN_APPLICATIONS
+                ? pendingApplications
+                : undefined;
           const link = (
             <Link
               key={item.href}

@@ -23,9 +23,11 @@ function isActivePath(pathname: string, href: string) {
 export function AdminMobileBottomBar() {
   const pathname = usePathname();
   const pendingDepositClaims = useQuery(api.depositClaims.queries.countPending);
+  const pendingApplications = useQuery(api.membershipApplications.queries.countPending);
   const moreActive = adminMoreSheetNav.some((item) =>
     isActivePath(pathname, item.href)
   );
+  const moreBadgeCount = (pendingDepositClaims ?? 0) + (pendingApplications ?? 0);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-border bg-background/95 backdrop-blur-md lg:hidden print:hidden">
@@ -59,9 +61,9 @@ export function AdminMobileBottomBar() {
             >
               <span className="relative">
                 <Menu className="size-5" />
-                {!!pendingDepositClaims && (
+                {!!moreBadgeCount && (
                   <span className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-medium text-danger-foreground">
-                    {pendingDepositClaims > 9 ? "9+" : pendingDepositClaims}
+                    {moreBadgeCount > 9 ? "9+" : moreBadgeCount}
                   </span>
                 )}
               </span>
@@ -76,7 +78,11 @@ export function AdminMobileBottomBar() {
           <div className="grid grid-cols-3 gap-3 px-4 pb-6">
             {adminMoreSheetNav.map((item) => {
               const badgeCount =
-                item.href === ROUTES.ADMIN_DEPOSIT_CLAIMS ? pendingDepositClaims : undefined;
+                item.href === ROUTES.ADMIN_DEPOSIT_CLAIMS
+                  ? pendingDepositClaims
+                  : item.href === ROUTES.ADMIN_APPLICATIONS
+                    ? pendingApplications
+                    : undefined;
               return (
                 <Link
                   key={item.href}

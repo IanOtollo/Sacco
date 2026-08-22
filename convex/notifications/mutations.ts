@@ -29,3 +29,23 @@ export const markAllRead = mutation({
     }
   },
 });
+
+// Called when the member visits the Updates tab, so its nav badge clears
+// without touching unrelated notification types (payments, loans, etc).
+export const markAnnouncementsRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const caller = await requireUser(ctx);
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_read", (q) =>
+        q.eq("recipientUserId", caller._id).eq("isRead", false)
+      )
+      .collect();
+    for (const n of unread) {
+      if (n.type === "announcement") {
+        await ctx.db.patch(n._id, { isRead: true });
+      }
+    }
+  },
+});

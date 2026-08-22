@@ -28,3 +28,19 @@ export const getUnreadCount = query({
     return unread.length;
   },
 });
+
+// Powers the badge on the member portal's Updates tab — unread
+// announcement notifications specifically, not every notification type.
+export const getUnreadAnnouncementCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const caller = await requireUser(ctx);
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_read", (q) =>
+        q.eq("recipientUserId", caller._id).eq("isRead", false)
+      )
+      .collect();
+    return unread.filter((n) => n.type === "announcement").length;
+  },
+});
