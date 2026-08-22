@@ -11,6 +11,7 @@ import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 import {
   Select,
   SelectContent,
@@ -58,7 +59,9 @@ export function AnnouncementForm({
 }) {
   const create = useMutation(api.announcements.mutations.create);
   const update = useMutation(api.announcements.mutations.update);
+  const setPublished = useMutation(api.announcements.mutations.setPublished);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingValues, setPendingValues] = useState<Values | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -72,18 +75,45 @@ export function AnnouncementForm({
   });
 
   async function onSubmit(values: Values) {
-    setSubmitting(true);
-    try {
-      const payload = { ...values, expiresAt: values.expiresAt || undefined };
-      if (announcement) {
+    // Editing just saves in place — no re-send. Creating always goes
+    // through the publish confirmation below.
+    if (announcement) {
+      setSubmitting(true);
+      try {
+        const payload = { ...values, expiresAt: values.expiresAt || undefined };
         await update({
           announcementId: announcement._id as Id<"announcements">,
           ...payload,
         });
         toast.success("Announcement updated");
-      } else {
-        await create(payload);
-        toast.success("Announcement created as a draft");
+        onSuccess();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not save announcement"
+        );
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    setPendingValues(values);
+  }
+
+  async function handleConfirmPublish() {
+    if (!pendingValues) return;
+    setSubmitting(true);
+    try {
+      const payload = { ...pendingValues, expiresAt: pendingValues.expiresAt || undefined };
+      const id = await create(payload);
+      try {
+        await setPublished({ announcementId: id, isPublished: true });
+        toast.success("Announcement published");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? `Saved as a draft, but publishing failed: ${error.message}`
+            : "Saved as a draft, but publishing failed — publish it from the list."
+        );
       }
       onSuccess();
     } catch (error) {
@@ -189,9 +219,22 @@ export function AnnouncementForm({
         />
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting && <Loader2 className="size-4 animate-spin" />}
-          {announcement ? "Save changes" : "Create draft"}
+          {announcement ? "Save changes" : "Publish"}
         </Button>
       </form>
+
+      <ConfirmModal
+        open={pendingValues !== null}
+        onOpenChange={(open) => !open && setPendingValues(null)}
+        title="Publish this announcement?"
+        description={
+          pendingValues
+            ? `This immediately notifies every ${pendingValues.targetAudience === "all" ? "member and admin" : pendingValues.targetAudience === "members" ? "member" : "admin"}.`
+            : ""
+        }
+        confirmLabel="Publish"
+        onConfirm={handleConfirmPublish}
+      />
     </Form>
   );
 }
