@@ -333,7 +333,7 @@ export default defineSchema({
 
   // ─── LOANS ────────────────────────────────────────
   loans: defineTable({
-    loanNumber: v.string(), // LN-NRM-20260813-0001
+    loanNumber: v.string(), // EDULA-001
     memberId: v.id("members"),
     productId: v.id("loanProducts"),
     principalAmount: v.float64(),

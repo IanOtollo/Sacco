@@ -114,7 +114,7 @@ export const issueNonMemberLoan = mutation({
       });
     }
 
-    const loanNumber = await generateLoanNumber(ctx, product.code);
+    const loanNumber = await generateLoanNumber(ctx);
 
     const loanId = await ctx.db.insert("loans", {
       loanNumber,
@@ -233,7 +233,7 @@ export const apply = mutation({
     }
 
     const interestAmount = 0; // computed at disbursement once schedule is generated
-    const loanNumber = await generateLoanNumber(ctx, product.code);
+    const loanNumber = await generateLoanNumber(ctx);
 
     // Guarantors are informational only — the borrower has already arranged
     // this with them offline, so they're recorded straight away rather than

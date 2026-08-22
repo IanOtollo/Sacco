@@ -8,20 +8,20 @@ export {
   type ScheduleInstallment,
 } from "../../lib/loan-calc";
 
-export async function generateLoanNumber(
-  ctx: MutationCtx,
-  productCode: string
-): Promise<string> {
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const prefix = `LN-${productCode}-${datePart}-`;
+// Client-mandated format: EDULA-001, EDULA-002, ... — one global sequence
+// across every loan regardless of product, member vs non-member, or date.
+export async function generateLoanNumber(ctx: MutationCtx): Promise<string> {
+  const prefix = "EDULA-";
 
-  const matching = await ctx.db
+  const last = await ctx.db
     .query("loans")
     .withIndex("by_loanNumber", (q) =>
       q.gte("loanNumber", prefix).lt("loanNumber", prefix + "￿")
     )
-    .collect();
+    .order("desc")
+    .first();
 
-  const seq = matching.length + 1;
-  return `${prefix}${String(seq).padStart(4, "0")}`;
+  const lastSeq = last ? parseInt(last.loanNumber.slice(prefix.length), 10) : 0;
+  const nextSeq = (Number.isNaN(lastSeq) ? 0 : lastSeq) + 1;
+  return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
