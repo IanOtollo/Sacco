@@ -3,6 +3,8 @@ import { internalAction, internalMutation, internalQuery } from "./_generated/se
 import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { normalizeNationalId } from "../lib/national-id";
+import { generateMemberNumber } from "./members/helpers";
+import { logAction } from "./audit";
 
 const SUPER_ADMIN_ID = "00000000";
 const SUPER_ADMIN_PASSWORD = "ChangeMe123";
@@ -411,5 +413,157 @@ export const renumberLoans = internalMutation({
     }
 
     return { renumbered, total: loans.length };
+  },
+});
+
+// One-off factory reset: wipes every member, loan, account, transaction,
+// notification, announcement, and all other operational/member data back
+// to empty. Leaves system config untouched (loanProducts, settings,
+// legalDocuments, contributionTypes). Every user with role "super_admin"
+// (the 00000000 bootstrap admin and any chairman/deputy promoted to
+// super_admin, e.g. Pius Ochodi) keeps their login credentials exactly
+// as-is — only their memberId link is cleared, since the member record it
+// pointed to is gone. Every other user (role "member") is deleted along
+// with their auth records. Reachable via `npx convex run seed:factoryReset`.
+export const factoryReset = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const wipeTables = [
+      "members",
+      "passwordResetRequests",
+      "depositClaims",
+      "membershipApplications",
+      "accounts",
+      "transactions",
+      "loans",
+      "loanSchedule",
+      "guarantors",
+      "contributions",
+      "dividends",
+      "dividendPayouts",
+      "commissions",
+      "notifications",
+      "announcements",
+      "projects",
+      "auditLog",
+    ] as const;
+
+    const counts: Record<string, number> = {};
+    for (const table of wipeTables) {
+      const rows = await ctx.db.query(table).collect();
+      for (const row of rows) await ctx.db.delete(row._id);
+      counts[table] = rows.length;
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+    const [authAccounts, authSessions, authRefreshTokens, authVerificationCodes, authVerifiers] =
+      await Promise.all([
+        ctx.db.query("authAccounts").collect(),
+        ctx.db.query("authSessions").collect(),
+        ctx.db.query("authRefreshTokens").collect(),
+        ctx.db.query("authVerificationCodes").collect(),
+        ctx.db.query("authVerifiers").collect(),
+      ]);
+
+    let usersDeleted = 0;
+    for (const user of allUsers) {
+      if (user.role === "super_admin") {
+        if (user.memberId) await ctx.db.patch(user._id, { memberId: undefined });
+        continue;
+      }
+
+      const accountsForUser = authAccounts.filter((a) => a.userId === user._id);
+      const accountIds = new Set(accountsForUser.map((a) => a._id));
+      for (const a of accountsForUser) await ctx.db.delete(a._id);
+
+      for (const code of authVerificationCodes) {
+        if (accountIds.has(code.accountId)) await ctx.db.delete(code._id);
+      }
+
+      const sessionsForUser = authSessions.filter((s) => s.userId === user._id);
+      const sessionIds = new Set(sessionsForUser.map((s) => s._id));
+      for (const s of sessionsForUser) await ctx.db.delete(s._id);
+
+      for (const token of authRefreshTokens) {
+        if (sessionIds.has(token.sessionId)) await ctx.db.delete(token._id);
+      }
+      for (const verifier of authVerifiers) {
+        if (verifier.sessionId && sessionIds.has(verifier.sessionId)) {
+          await ctx.db.delete(verifier._id);
+        }
+      }
+
+      await ctx.db.delete(user._id);
+      usersDeleted++;
+    }
+
+    return { ...counts, usersDeleted };
+  },
+});
+
+// One-off: recreate Pius Ochodi's member profile after factoryReset wiped
+// the members table. He keeps his existing super_admin login untouched —
+// this just gives him the ordinary member profile (savings/shares
+// accounts) that comes with being chairman: a full participating member,
+// not admin-only. No-ops if he already has one. Reachable via
+// `npx convex run seed:restoreChairmanMemberProfile`.
+export const restoreChairmanMemberProfile = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const chairman = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", "28916234"))
+      .first();
+    if (!chairman) throw new Error("Chairman user (National ID 28916234) not found");
+    if (chairman.memberId) return { alreadyHasProfile: true };
+
+    const allUsers = await ctx.db.query("users").collect();
+    const bootstrapAdmin = allUsers.find((u) => u.nationalId === "00000000");
+    if (!bootstrapAdmin) throw new Error("Bootstrap admin (00000000) not found");
+
+    const memberNumber = await generateMemberNumber(ctx);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const memberId = await ctx.db.insert("members", {
+      memberNumber,
+      firstName: "PIUS",
+      lastName: "OCHODI",
+      nationalId: "28916234",
+      phoneNumber: "+254721679034",
+      gender: "male",
+      dateJoined: today,
+      status: "active",
+      userId: chairman._id,
+      registeredBy: bootstrapAdmin._id,
+      committeeRole: "chairman",
+    });
+
+    await ctx.db.patch(chairman._id, { memberId });
+
+    for (const [type, prefix, minimumBalance] of [
+      ["savings", "SAV", 0],
+      ["shares_capital", "SHC", 5000],
+      ["shares_long_term", "SHL", 0],
+      ["shares_short_term", "SHS", 0],
+    ] as const) {
+      await ctx.db.insert("accounts", {
+        memberId,
+        type,
+        accountNumber: `${prefix}-${memberNumber}`,
+        balance: 0,
+        minimumBalance,
+        isActive: true,
+      });
+    }
+
+    await logAction(ctx, {
+      userId: bootstrapAdmin._id,
+      action: "member.register",
+      entityType: "member",
+      entityId: memberId,
+      details: { memberNumber, name: "PIUS OCHODI" },
+    });
+
+    return { memberId, memberNumber };
   },
 });

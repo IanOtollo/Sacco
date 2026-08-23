@@ -16,6 +16,7 @@ import { TransactionModal } from "@/components/accounts/transaction-modal";
 import { TransactionTable } from "@/components/accounts/transaction-table";
 import { MemberContributionsTab } from "@/components/contributions/member-contributions-tab";
 import { CommitteeRoleSelect } from "@/components/members/committee-role-select";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import {
   Tabs,
   TabsContent,
@@ -127,6 +128,7 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
               <h1 className="font-heading text-xl font-bold tracking-tight">
                 {member.firstName} {member.lastName}
               </h1>
+              <VerifiedBadge committeeRole={member.committeeRole} className="size-4" />
               <StatusBadge status={member.status} />
             </div>
             <p className="mt-0.5 font-mono text-sm text-muted-foreground">

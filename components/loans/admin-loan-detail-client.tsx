@@ -33,8 +33,8 @@ import {
   Banknote,
   Ban,
   Printer,
-  BadgeCheck,
 } from "lucide-react";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 
 export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   const loan = useQuery(api.loans.queries.getById, {
@@ -136,7 +136,7 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
                     Non-member
                   </span>
                 ) : (
-                  <BadgeCheck className="size-4 shrink-0 text-primary" />
+                  <VerifiedBadge className="size-4" committeeRole={loan.member.committeeRole} />
                 )}
               </div>
             )}

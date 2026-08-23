@@ -42,6 +42,7 @@ export const listAll = query({
           ...loan,
           memberName: member ? `${member.firstName} ${member.lastName}` : "—",
           isNonMember: member?.isNonMember ?? false,
+          committeeRole: member?.committeeRole,
           productName: product?.name ?? "—",
           guarantorsAccepted: guarantors.filter((g) => g.status === "accepted").length,
           guarantorsTotal: guarantors.length,

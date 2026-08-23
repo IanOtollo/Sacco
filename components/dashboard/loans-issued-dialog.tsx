@@ -15,7 +15,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/utils";
-import { BadgeCheck, HandCoins } from "lucide-react";
+import { HandCoins } from "lucide-react";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 
 const ISSUED_STATUSES = new Set([
   "disbursed",
@@ -46,8 +47,8 @@ export function LoansIssuedDialog({
           <DialogTitle>Loans issued</DialogTitle>
           <DialogDescription>
             Every loan that has been disbursed.{" "}
-            <BadgeCheck className="inline size-3.5 text-primary" /> marks a
-            verified Sacco member — everyone else is a non-member borrower.
+            <VerifiedBadge className="inline" /> marks a verified Sacco
+            member — everyone else is a non-member borrower.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,7 +73,7 @@ export function LoansIssuedDialog({
                   <div className="flex items-center gap-1.5 font-medium">
                     <span className="truncate">{loan.memberName}</span>
                     {!loan.isNonMember && (
-                      <BadgeCheck className="size-3.5 shrink-0 text-primary" />
+                      <VerifiedBadge committeeRole={loan.committeeRole} />
                     )}
                   </div>
                   <p className="mt-0.5 font-mono text-xs text-muted-foreground">

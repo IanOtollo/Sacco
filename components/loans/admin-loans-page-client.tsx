@@ -22,8 +22,9 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/utils";
-import { HandCoins, BadgeCheck } from "lucide-react";
+import { HandCoins } from "lucide-react";
 import { IssueNonMemberLoanDialog } from "@/components/loans/issue-non-member-loan-dialog";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 
 const TABS = [
   { value: "pending_approval", label: "Pending approval" },
@@ -89,7 +90,7 @@ function LoansTable({ status }: { status?: string }) {
                       Non-member
                     </span>
                   ) : (
-                    <BadgeCheck className="size-3.5 shrink-0 text-primary" />
+                    <VerifiedBadge committeeRole={loan.committeeRole} />
                   )}
                 </span>
               </TableCell>
@@ -132,8 +133,9 @@ export function AdminLoansPageClient() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Review applications and manage the active loan book.{" "}
-            <BadgeCheck className="inline size-3.5 text-primary" /> marks a
-            verified Sacco member — everyone else is a non-member borrower.
+            <VerifiedBadge className="inline" /> marks a verified Sacco
+            member (colored by committee office) — everyone else is a
+            non-member borrower.
           </p>
         </div>
         <IssueNonMemberLoanDialog />

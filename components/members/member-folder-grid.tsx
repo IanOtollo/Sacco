@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { FolderOpen, Users } from "lucide-react";
 
 function initials(first: string, last: string) {
@@ -86,11 +87,14 @@ export function MemberFolderGrid({
                       {initials(m.firstName, m.lastName)}
                     </AvatarFallback>
                   </Avatar>
-                  <FolderOpen className="absolute -right-1 -bottom-1 size-4 rounded-full bg-card text-muted-foreground" />
+                  <FolderOpen className="absolute -right-1 -bottom-1 size-3 rounded-full bg-card text-muted-foreground" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">
-                    {m.firstName} {m.lastName}
+                  <p className="flex items-center gap-1 truncate font-semibold">
+                    <span className="truncate">
+                      {m.firstName} {m.lastName}
+                    </span>
+                    <VerifiedBadge committeeRole={m.committeeRole} className="size-3.5" />
                   </p>
                   <p className="font-mono text-xs text-muted-foreground">
                     {m.memberNumber}

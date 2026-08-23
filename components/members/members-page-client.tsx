@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { MemberFolderGrid, type MemberSort } from "@/components/members/member-folder-grid";
 import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,8 @@ export function MembersPageClient() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<MemberSort>("newest");
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
+  const allMembers = useQuery(api.members.queries.list, {});
+  const totalMembers = allMembers?.length;
 
   function handleExport() {
     if (rows.length === 0) return;
@@ -58,12 +63,20 @@ export function MembersPageClient() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
-            Members
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-heading text-2xl font-bold tracking-tight">
+              Members
+            </h1>
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
+              {totalMembers ?? "…"} total
+            </span>
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Members join via self-registration and admin approval — see
-            Applications.
+            Members join via self-registration and admin approval — see{" "}
+            <Link href="/admin/applications" className="underline underline-offset-2 hover:text-foreground">
+              Applications
+            </Link>
+            .
           </p>
         </div>
         <Button variant="outline" onClick={handleExport} disabled={rows.length === 0}>
