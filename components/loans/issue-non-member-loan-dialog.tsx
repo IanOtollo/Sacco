@@ -8,6 +8,7 @@ import { z } from "zod";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
+import { InvitorSelector, type InvitorCandidate } from "@/components/auth/invitor-selector";
 import { normalizeKenyanPhone } from "@/lib/phone";
 import { resolveEmergencyLoanRate, resolveDevelopmentLoanRate } from "@/lib/loan-calc";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ export function IssueNonMemberLoanDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Values | null>(null);
+  const [invitor, setInvitor] = useState<InvitorCandidate | null>(null);
   const issueLoan = useMutation(api.loans.mutations.issueNonMemberLoan);
 
   const form = useForm<Values>({
@@ -159,6 +161,7 @@ export function IssueNonMemberLoanDialog() {
     setOpen(next);
     if (!next) {
       setPending(null);
+      setInvitor(null);
       form.reset();
     }
   }
@@ -178,6 +181,7 @@ export function IssueNonMemberLoanDialog() {
         purpose: pending.purpose,
         collateralDescription: pending.collateralDescription,
         collateralValue: Number(pending.collateralValue || 0),
+        invitorMemberId: invitor?._id,
       });
       toast.success(`Loan ${result.loanNumber} issued — pending approval`);
       handleOpenChange(false);
@@ -268,6 +272,15 @@ export function IssueNonMemberLoanDialog() {
                       </FormItem>
                     )}
                   />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Referred by <span className="font-normal text-muted-foreground">(optional)</span>
+                </h3>
+                <div className="mt-3">
+                  <InvitorSelector selected={invitor} onChange={setInvitor} />
                 </div>
               </div>
 

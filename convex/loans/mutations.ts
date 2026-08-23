@@ -40,6 +40,10 @@ export const issueNonMemberLoan = mutation({
     purpose: v.string(),
     collateralDescription: v.string(),
     collateralValue: v.number(),
+    // Existing member the admin credits with bringing this walk-in borrower
+    // in, picked from the same search box as the sign-up form's invitor
+    // picker. Optional — not every non-member borrower was referred.
+    invitorMemberId: v.optional(v.id("members")),
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -101,6 +105,17 @@ export const issueNonMemberLoan = mutation({
     let memberId = existing?._id;
     if (!memberId) {
       const memberNumber = await generateNonMemberNumber(ctx);
+
+      // Validate softly — a stale/invalid invitor pick shouldn't block the
+      // whole loan, it just gets dropped.
+      let invitorMemberId = args.invitorMemberId;
+      if (invitorMemberId) {
+        const invitor = await ctx.db.get(invitorMemberId);
+        if (!invitor || invitor.status !== "active" || invitor.isNonMember) {
+          invitorMemberId = undefined;
+        }
+      }
+
       memberId = await ctx.db.insert("members", {
         memberNumber,
         firstName: args.firstName,
@@ -111,6 +126,7 @@ export const issueNonMemberLoan = mutation({
         status: "active",
         registeredBy: admin._id,
         isNonMember: true,
+        invitedBy: invitorMemberId,
       });
     }
 
