@@ -53,6 +53,41 @@ export const seedSuperAdmin = internalAction({
   },
 });
 
+// One-off: grants whoever currently holds the treasurer office full
+// super_admin system access, while leaving their committeeRole as
+// "treasurer" untouched — a manual exception requested outside the normal
+// chairman/deputy auto-promotion path (see members/mutations.ts
+// setCommitteeRole, where only chairman/deputy_chairman auto-promote).
+// Internal-only, reachable via `npx convex run seed:promoteTreasurerToSuperAdmin`.
+export const promoteTreasurerToSuperAdmin = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("committeeRole"), "treasurer"))
+      .first();
+    if (!user) throw new Error("No user currently holds the treasurer role");
+
+    await ctx.db.patch(user._id, { role: "super_admin" });
+
+    const chairman = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("committeeRole"), "chairman"))
+      .first();
+    if (chairman) {
+      await logAction(ctx, {
+        userId: chairman._id,
+        action: "user.promoteToSuperAdmin",
+        entityType: "user",
+        entityId: user._id,
+        details: { name: user.name, committeeRole: user.committeeRole },
+      });
+    }
+
+    return { promoted: user.name, nationalId: user.nationalId };
+  },
+});
+
 // One-off migration for a super admin account created back when login was
 // phone+PIN — repoints their auth account onto a National ID + password so
 // they aren't locked out after the switch to National ID-based login.

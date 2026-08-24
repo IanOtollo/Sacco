@@ -28,7 +28,8 @@ export function MemberSidebar() {
 
   const isTopOffice =
     currentUser?.committeeRole === "chairman" ||
-    currentUser?.committeeRole === "deputy_chairman";
+    currentUser?.committeeRole === "deputy_chairman" ||
+    currentUser?.role === "super_admin";
 
   const navItems = [
     ...memberSidebarNav.slice(0, -1),
