@@ -128,15 +128,23 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
               <h1 className="font-heading text-xl font-bold tracking-tight">
                 {member.firstName} {member.lastName}
               </h1>
-              <VerifiedBadge committeeRole={member.committeeRole} className="size-4" />
+              {member.isNonMember ? (
+                <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[10px] font-medium text-secondary">
+                  Non-member
+                </span>
+              ) : (
+                <VerifiedBadge committeeRole={member.committeeRole} className="size-4" />
+              )}
               <StatusBadge status={member.status} />
             </div>
             <p className="mt-0.5 font-mono text-sm text-muted-foreground">
               {member.memberNumber} · {member.phoneNumber}
             </p>
-            <div className="mt-2">
-              <CommitteeRoleSelect memberId={member._id} currentRole={member.committeeRole} />
-            </div>
+            {!member.isNonMember && (
+              <div className="mt-2">
+                <CommitteeRoleSelect memberId={member._id} currentRole={member.committeeRole} />
+              </div>
+            )}
           </div>
         </div>
         <DropdownMenu>

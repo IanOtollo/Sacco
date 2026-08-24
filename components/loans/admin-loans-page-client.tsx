@@ -27,11 +27,11 @@ import { IssueNonMemberLoanDialog } from "@/components/loans/issue-non-member-lo
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 
 const TABS = [
+  { value: "all", label: "All" },
   { value: "pending_approval", label: "Pending approval" },
   { value: "active", label: "Active" },
   { value: "fully_paid", label: "Fully paid" },
   { value: "defaulted", label: "Defaulted" },
-  { value: "all", label: "All" },
 ] as const;
 
 function LoansTable({ status }: { status?: string }) {
@@ -124,6 +124,8 @@ function LoansTable({ status }: { status?: string }) {
 }
 
 export function AdminLoansPageClient() {
+  const pendingApproval = useQuery(api.loans.queries.countPendingApproval);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -141,11 +143,16 @@ export function AdminLoansPageClient() {
         <IssueNonMemberLoanDialog />
       </div>
 
-      <Tabs defaultValue="pending_approval" className="mt-6">
+      <Tabs defaultValue="all" className="mt-6">
         <TabsList>
           {TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
+            <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
               {t.label}
+              {t.value === "pending_approval" && !!pendingApproval && (
+                <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-medium text-danger-foreground">
+                  {pendingApproval > 9 ? "9+" : pendingApproval}
+                </span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>

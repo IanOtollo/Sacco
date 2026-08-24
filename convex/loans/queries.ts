@@ -2,6 +2,18 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireMemberProfile, requireTreasurer, requireUser } from "../authz";
 
+export const countPendingApproval = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireTreasurer(ctx);
+    const loans = await ctx.db
+      .query("loans")
+      .withIndex("by_status", (q) => q.eq("status", "pending_approval"))
+      .collect();
+    return loans.length;
+  },
+});
+
 export const listAll = query({
   args: {
     status: v.optional(v.string()),
