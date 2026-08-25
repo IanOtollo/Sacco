@@ -85,18 +85,23 @@ export const submit = action({
 export const findDuplicate = internalQuery({
   args: { nationalId: v.string(), phoneNumber: v.optional(v.string()) },
   handler: async (ctx, { nationalId, phoneNumber }) => {
+    // Non-member loan placeholders (isNonMember: true) don't count as a
+    // registered member here — someone who's only ever been recorded as a
+    // non-member borrower is still registering for the first time. Their
+    // placeholder row gets upgraded into a real member on approval instead
+    // of blocking them — see approve() below.
     const memberById = await ctx.db
       .query("members")
       .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
       .first();
-    if (memberById) return "member" as const;
+    if (memberById && !memberById.isNonMember) return "member" as const;
 
     if (phoneNumber) {
       const memberByPhone = await ctx.db
         .query("members")
         .withIndex("by_phone", (q) => q.eq("phoneNumber", phoneNumber))
         .first();
-      if (memberByPhone) return "member" as const;
+      if (memberByPhone && !memberByPhone.isNonMember) return "member" as const;
     }
 
     const application = await ctx.db
@@ -187,11 +192,23 @@ export const approve = mutation({
       throw new Error("Confirm the registration fee was received before approving");
     }
 
+    // A non-member loan placeholder with this National ID gets upgraded into
+    // the real member record on approval, instead of a second row being
+    // created — see members.mutations.createMemberRecord. Anything else
+    // (a real member, or a placeholder under a different identity) blocks.
+    const existingByNationalId = await ctx.db
+      .query("members")
+      .withIndex("by_nationalId", (q) => q.eq("nationalId", application.nationalId))
+      .first();
+    if (existingByNationalId && !existingByNationalId.isNonMember) {
+      throw new Error("A member with this National ID is already registered.");
+    }
+
     const phoneTaken = await ctx.db
       .query("members")
       .withIndex("by_phone", (q) => q.eq("phoneNumber", application.phoneNumber))
       .first();
-    if (phoneTaken) {
+    if (phoneTaken && phoneTaken._id !== existingByNationalId?._id) {
       throw new Error("A member with this phone number is already registered.");
     }
 
@@ -209,6 +226,7 @@ export const approve = mutation({
       userId: application.userId,
       registeredBy: admin._id,
       invitedBy: invitor?._id,
+      upgradeMemberId: existingByNationalId?.isNonMember ? existingByNationalId._id : undefined,
     });
 
     await ctx.db.patch(application.userId, {

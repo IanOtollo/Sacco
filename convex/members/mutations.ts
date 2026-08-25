@@ -34,6 +34,11 @@ export const createMemberRecord = internalMutation({
     userId: v.id("users"),
     registeredBy: v.id("users"),
     invitedBy: v.optional(v.id("members")),
+    // A non-member loan placeholder (members.isNonMember) sharing this
+    // person's National ID — upgrade it in place instead of inserting a
+    // fresh row, so existing loan history stays attached to one identity.
+    // See membershipApplications/mutations.ts approve().
+    upgradeMemberId: v.optional(v.id("members")),
   },
   returns: v.object({
     memberId: v.id("members"),
@@ -43,11 +48,9 @@ export const createMemberRecord = internalMutation({
     ctx,
     args
   ): Promise<{ memberId: Id<"members">; memberNumber: string }> => {
-    const memberNumber = await generateMemberNumber(ctx);
     const today = new Date().toISOString().slice(0, 10);
 
-    const memberId = await ctx.db.insert("members", {
-      memberNumber,
+    const memberFields = {
       firstName: args.firstName,
       lastName: args.lastName,
       middleName: args.middleName,
@@ -64,11 +67,30 @@ export const createMemberRecord = internalMutation({
       nextOfKinPhone: args.nextOfKinPhone,
       nextOfKinRelationship: args.nextOfKinRelationship,
       dateJoined: today,
-      status: "active",
+      status: "active" as const,
       userId: args.userId,
       registeredBy: args.registeredBy,
       invitedBy: args.invitedBy,
-    });
+    };
+
+    let memberId: Id<"members">;
+    let memberNumber: string;
+    if (args.upgradeMemberId) {
+      const existing = await ctx.db.get(args.upgradeMemberId);
+      if (!existing || !existing.isNonMember) {
+        throw new Error("Expected an existing non-member record to upgrade");
+      }
+      memberNumber = await generateMemberNumber(ctx);
+      memberId = args.upgradeMemberId;
+      await ctx.db.patch(memberId, {
+        ...memberFields,
+        memberNumber,
+        isNonMember: undefined,
+      });
+    } else {
+      memberNumber = await generateMemberNumber(ctx);
+      memberId = await ctx.db.insert("members", { ...memberFields, memberNumber });
+    }
 
     await ctx.db.patch(args.userId, { memberId });
 
