@@ -45,7 +45,7 @@ export function LegalDocumentDialog({
           <p className="text-xs text-muted-foreground">
             {doc?.updatedAt
               ? `Last updated ${formatDate(doc.updatedAt)}`
-              : "Last updated today"}
+              : "Showing the default text — not yet customized"}
           </p>
         </DialogHeader>
         <div className="-mx-4 flex-1 space-y-6 overflow-y-auto px-4">
