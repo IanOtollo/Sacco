@@ -674,3 +674,34 @@ export const backdoorRegisterJohnObukui = internalAction({
     return { nationalId, password, memberNumber: result.memberNumber };
   },
 });
+
+// One-off data correction: the referral commission on David Odito Osapiro's
+// EDULA-002 repayment was recorded as 25% of the repayment amount (500 ->
+// 125), from before loans/mutations.ts repay() was changed to base the
+// commission on the interest portion of the payment only. EDULA-002 is a
+// single-installment emergency loan of 2000 principal / 204.6 interest
+// (2204.6 total); of the 500 already repaid, interest = 500 * (204.6 /
+// 2204.6) = 46.40, so the correct commission is 25% of that = 11.60. Still
+// "pending" (nothing paid out to the invitor yet), so safe to correct in
+// place rather than reverse a real payout. Reachable via
+// `npx convex run seed:correctEdula002Commission`.
+export const correctEdula002Commission = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const commission = await ctx.db
+      .query("commissions")
+      .filter((q) => q.eq(q.field("description"), "Referral — David Odito Osapiro repaid EDULA-002"))
+      .first();
+    if (!commission) throw new Error("Commission record not found");
+    if (commission.status !== "pending") {
+      throw new Error(`Expected status "pending", found "${commission.status}" — not safe to auto-correct`);
+    }
+    if (commission.amount !== 125) {
+      throw new Error(`Expected amount 125, found ${commission.amount} — already corrected or changed`);
+    }
+
+    await ctx.db.patch(commission._id, { amount: 11.6 });
+
+    return { oldAmount: 125, newAmount: 11.6 };
+  },
+});

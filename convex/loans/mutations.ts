@@ -593,13 +593,25 @@ export const repay = mutation({
       .collect();
     schedule.sort((a, b) => Number(a.installmentNumber) - Number(b.installmentNumber));
 
+    // Each installment's interestDue/totalDue split is fixed at disbursement
+    // (see lib/loan-calc.ts) and never changes — penalties are tracked
+    // separately (installment.penaltyAmount) and never fold into totalDue.
+    // Prorating every applied shilling by that ratio means the interest
+    // portion summed across any number of partial payments always lands on
+    // the installment's exact interestDue — used below to base the
+    // invitor's commission on interest actually paid, not principal.
     let remaining = amount;
+    let interestApplied = 0;
     for (const installment of schedule) {
       if (remaining <= 0) break;
       if (installment.status === "paid") continue;
 
       const due = installment.totalDue - installment.amountPaid;
       const applied = Math.min(due, remaining);
+      const interestRatio =
+        installment.totalDue > 0 ? installment.interestDue / installment.totalDue : 0;
+      interestApplied = round2(interestApplied + applied * interestRatio);
+
       const newAmountPaid = round2(installment.amountPaid + applied);
       const fullyPaid = newAmountPaid >= installment.totalDue - 0.01;
 
@@ -659,10 +671,14 @@ export const repay = mutation({
     }
 
     // Referral commission — whoever invited this borrower to the Sacco
-    // earns 25% of every repayment they make, for the life of the loan.
+    // earns 25% of the interest portion of every repayment they make (not
+    // principal), for the life of the loan. interestApplied already prorates
+    // this specific payment against each touched installment's fixed
+    // interest/total split, so paying in installments neither restarts nor
+    // inflates the total commission versus paying in one lump sum.
     if (member?.invitedBy) {
       const invitor = await ctx.db.get(member.invitedBy);
-      const commission = round2(amount * 0.25);
+      const commission = round2(interestApplied * 0.25);
       if (invitor && commission > 0) {
         await ctx.db.insert("commissions", {
           memberId: invitor._id,
