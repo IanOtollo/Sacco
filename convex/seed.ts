@@ -602,3 +602,75 @@ export const restoreChairmanMemberProfile = internalMutation({
     return { memberId, memberNumber };
   },
 });
+
+// One-off: manually completes John Obukui's membership registration.
+// He's had a non-member-loan placeholder (EXT-0004, National ID 29752895)
+// since 2026-08-23; self-registration should now upgrade that placeholder
+// in place (see membershipApplications/mutations.ts approve()), but the fix
+// wasn't actually live on this deployment when he tried, so he kept hitting
+// the old "already registered" duplicate error. Bypasses the normal
+// application/fee-confirmation step since this is a manual backend fix, not
+// a real signup — no registration fee was collected. Reachable via
+// `npx convex run seed:backdoorRegisterJohnObukui`.
+export const findNonMemberPlaceholder = internalQuery({
+  args: { nationalId: v.string() },
+  handler: async (ctx, { nationalId }) => {
+    const member = await ctx.db
+      .query("members")
+      .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
+      .first();
+    if (!member || !member.isNonMember) return null;
+    return member;
+  },
+});
+
+export const backdoorRegisterJohnObukui = internalAction({
+  args: {},
+  returns: v.object({
+    nationalId: v.string(),
+    password: v.string(),
+    memberNumber: v.string(),
+  }),
+  handler: async (ctx): Promise<{ nationalId: string; password: string; memberNumber: string }> => {
+    const nationalId = normalizeNationalId("29752895");
+    const phoneNumber = "+254702253334";
+    const password = "John123";
+
+    const placeholder = await ctx.runQuery(internal.seed.findNonMemberPlaceholder, {
+      nationalId,
+    });
+    if (!placeholder) {
+      throw new Error("No non-member placeholder found for National ID 29752895");
+    }
+
+    const { user } = await createAccount(ctx, {
+      provider: "password",
+      account: { id: nationalId, secret: password },
+      profile: {
+        email: nationalId,
+        nationalId,
+        phone: phoneNumber,
+        name: "John Obukui",
+        role: "member",
+        isActive: true,
+        isFirstLogin: true,
+      },
+    });
+
+    // createMemberRecord already writes its own "member.register" audit
+    // entry — no need to duplicate it here.
+    const result = await ctx.runMutation(internal.members.mutations.createMemberRecord, {
+      firstName: "John",
+      lastName: "Obukui",
+      nationalId,
+      phoneNumber,
+      gender: "male",
+      userId: user._id,
+      registeredBy: placeholder.registeredBy,
+      invitedBy: placeholder.invitedBy,
+      upgradeMemberId: placeholder._id,
+    });
+
+    return { nationalId, password, memberNumber: result.memberNumber };
+  },
+});
