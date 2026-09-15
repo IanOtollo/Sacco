@@ -41,13 +41,11 @@ export function MakePaymentModal({
   onOpenChange,
   loanId,
   monthlyRepayment,
-  isNonMember,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loanId: Id<"loans">;
   monthlyRepayment: number;
-  isNonMember?: boolean;
 }) {
   const repay = useMutation(api.loans.mutations.repay);
   const [pendingAmount, setPendingAmount] = useState<string | null>(null);

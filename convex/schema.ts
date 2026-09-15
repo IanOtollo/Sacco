@@ -522,7 +522,8 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("redeemed")),
   })
     .index("by_member", ["memberId"])
-    .index("by_member_status", ["memberId", "status"]),
+    .index("by_member_status", ["memberId", "status"])
+    .index("by_loan", ["loanId"]),
 
   // ─── NOTIFICATIONS ────────────────────────────────
   // SACCO-owned funds are distinct from individual member accounts.

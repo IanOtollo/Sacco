@@ -351,7 +351,6 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         onOpenChange={setPayOpen}
         loanId={loan._id}
         monthlyRepayment={loan.monthlyRepayment}
-        isNonMember={loan.member?.isNonMember}
       />
     </div>
 
