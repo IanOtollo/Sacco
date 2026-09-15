@@ -525,6 +525,23 @@ export default defineSchema({
     .index("by_member_status", ["memberId", "status"]),
 
   // ─── NOTIFICATIONS ────────────────────────────────
+  // SACCO-owned funds are distinct from individual member accounts.
+  saccoFunds: defineTable({
+    key: v.literal("long_term_shares"),
+    balance: v.float64(),
+    updatedAt: v.string(),
+  }).index("by_key", ["key"]),
+
+  saccoFundTransactions: defineTable({
+    fundId: v.id("saccoFunds"),
+    type: v.literal("loan_interest_credit"),
+    amount: v.float64(),
+    balanceBefore: v.float64(),
+    balanceAfter: v.float64(),
+    description: v.string(),
+    relatedLoanId: v.id("loans"),
+    processedBy: v.id("users"),
+  }).index("by_fund", ["fundId"]).index("by_loan", ["relatedLoanId"]),
   notifications: defineTable({
     recipientUserId: v.id("users"),
     title: v.string(),

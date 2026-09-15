@@ -101,8 +101,8 @@ export function AdminDashboardClient() {
         />
         <StatCard
           icon={CalendarClock}
-          label="Long Term Capital"
-          value={<CurrencyDisplay amount={stats.sharesLongTermPool} />}
+          label="Sacco long-term fund"
+          value={<CurrencyDisplay amount={stats.saccoLongTermSharesFund} />}
           tone="secondary"
         />
         <StatCard

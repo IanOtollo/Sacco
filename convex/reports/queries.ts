@@ -56,12 +56,13 @@ export const getAdminDashboard = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const [members, accounts, loans, transactions, schedule] = await Promise.all([
+    const [members, accounts, loans, transactions, schedule, saccoFunds] = await Promise.all([
       ctx.db.query("members").collect(),
       ctx.db.query("accounts").collect(),
       ctx.db.query("loans").collect(),
       ctx.db.query("transactions").collect(),
       ctx.db.query("loanSchedule").collect(),
+      ctx.db.query("saccoFunds").collect(),
     ]);
 
     const activeMembers = members.filter(
@@ -73,6 +74,9 @@ export const getAdminDashboard = query({
     const sharesLongTermPool = accounts
       .filter((a) => a.type === "shares_long_term")
       .reduce((s, a) => s + a.balance, 0);
+    const saccoLongTermSharesFund = saccoFunds.find(
+      (fund) => fund.key === "long_term_shares"
+    )?.balance ?? 0;
     const sharesShortTermPool = accounts
       .filter((a) => a.type === "shares_short_term")
       .reduce((s, a) => s + a.balance, 0);
@@ -183,6 +187,7 @@ export const getAdminDashboard = query({
         savingsPool,
         sharesPool,
         sharesLongTermPool,
+        saccoLongTermSharesFund,
         sharesShortTermPool,
         sharesCapitalPool,
         activeLoansCount: activeLoans.length,

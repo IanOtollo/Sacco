@@ -574,18 +574,8 @@ export const repay = mutation({
     }
     if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-    // Non-member borrowers have no savings account — their repayments are
-    // fresh cash/mpesa/bank funds applied straight to the loan, not a debit
-    // against an internal balance the way a member's repayment works.
-    const savingsAccount = await ctx.db
-      .query("accounts")
-      .withIndex("by_member_type", (q) =>
-        q.eq("memberId", loan.memberId).eq("type", "savings")
-      )
-      .first();
-    if (savingsAccount && savingsAccount.balance < amount) {
-      throw new Error("Insufficient savings balance to make this repayment");
-    }
+    // Repayments are external cash, M-Pesa, or bank funds for every borrower.
+    // They reduce only the loan; a member's savings balance is never debited.
 
     const schedule = await ctx.db
       .query("loanSchedule")
@@ -622,27 +612,6 @@ export const repay = mutation({
       });
 
       remaining = round2(remaining - applied);
-    }
-
-    if (savingsAccount) {
-      const balanceBefore = savingsAccount.balance;
-      const balanceAfter = round2(balanceBefore - amount);
-      await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
-
-      await ctx.db.insert("transactions", {
-        accountId: savingsAccount._id,
-        memberId: loan.memberId,
-        type: "loan_repayment",
-        amount,
-        balanceBefore,
-        balanceAfter,
-        description: `Loan repayment — ${loan.loanNumber}`,
-        referenceNumber: generateReferenceNumber(),
-        relatedLoanId: loanId,
-        processedBy: isAdmin ? caller._id : undefined,
-        channel: channel ?? "system",
-        status: "completed",
-      });
     }
 
     const newTotalPaid = round2(loan.totalPaid + amount);
@@ -704,12 +673,60 @@ export const repay = mutation({
       }
     }
 
+    // Once the loan is settled, its interest belongs to the Sacco fund, not
+    // to the borrower. Existing inviter commission rows are deducted so the
+    // fund receives the remaining interest (75% where a 25% commission exists).
+    if (fullyPaidLoan) {
+      const commissionRows = await ctx.db
+        .query("commissions")
+        .withIndex("by_loan", (q) => q.eq("loanId", loanId))
+        .collect();
+      const inviterCommission = round2(
+        commissionRows.reduce((sum, row) => sum + row.amount, 0)
+      );
+      const saccoInterest = round2(
+        Math.max(loan.interestAmount - inviterCommission, 0)
+      );
+
+      if (saccoInterest > 0) {
+        let fund = await ctx.db
+          .query("saccoFunds")
+          .withIndex("by_key", (q) => q.eq("key", "long_term_shares"))
+          .first();
+        if (!fund) {
+          const fundId = await ctx.db.insert("saccoFunds", {
+            key: "long_term_shares",
+            balance: 0,
+            updatedAt: new Date().toISOString(),
+          });
+          fund = await ctx.db.get(fundId);
+        }
+        if (!fund) throw new Error("Could not create Sacco long-term shares fund");
+
+        const balanceBefore = fund.balance;
+        const balanceAfter = round2(balanceBefore + saccoInterest);
+        await ctx.db.patch(fund._id, {
+          balance: balanceAfter,
+          updatedAt: new Date().toISOString(),
+        });
+        await ctx.db.insert("saccoFundTransactions", {
+          fundId: fund._id,
+          type: "loan_interest_credit",
+          amount: saccoInterest,
+          balanceBefore,
+          balanceAfter,
+          description: `Loan interest retained from ${loan.loanNumber}`,
+          relatedLoanId: loanId,
+          processedBy: caller._id,
+        });
+      }
+    }
     await logAction(ctx, {
       userId: caller._id,
       action: "loan.repay",
       entityType: "loan",
       entityId: loanId,
-      details: { amount },
+      details: { amount, channel: channel ?? "cash" },
     });
   },
 });

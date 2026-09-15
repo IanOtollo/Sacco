@@ -80,9 +80,8 @@ export function MakePaymentModal({
           <DialogHeader>
             <DialogTitle>Make a repayment</DialogTitle>
             <DialogDescription>
-              {isNonMember
-                ? "Record cash/M-Pesa/bank funds received and apply them to the oldest unpaid installment first."
-                : "This debits your savings account and applies to the oldest unpaid installment first."}
+              Record cash, M-Pesa, or bank funds received and apply them to
+              the oldest unpaid installment first. Savings are not debited.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -117,9 +116,7 @@ export function MakePaymentModal({
         title="Confirm repayment"
         description={
           pendingAmount
-            ? isNonMember
-              ? `This applies KES ${Number(pendingAmount).toLocaleString()} received to this loan. This cannot be undone.`
-              : `This debits KES ${Number(pendingAmount).toLocaleString()} from the member's savings account and applies it to this loan. This cannot be undone.`
+            ? `This applies KES ${Number(pendingAmount).toLocaleString()} received to this loan. Savings are not debited. This cannot be undone.`
             : ""
         }
         confirmLabel="Confirm repayment"
