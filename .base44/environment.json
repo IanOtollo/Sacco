@@ -1,0 +1,19 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "NEXT_PUBLIC_CONVEX_URL",
+      "description": "Your Convex deployment URL (e.g. https://your-deployment.convex.cloud). Found in the Convex dashboard or via `npx convex dev`.",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "CONVEX_SITE_URL",
+      "description": "Your Convex site URL for auth (e.g. https://your-deployment.site.convex.cloud). Used by convex/auth.config.ts on the Convex backend.",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": true
+    }
+  ]
+}
