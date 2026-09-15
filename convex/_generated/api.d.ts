@@ -32,6 +32,7 @@ import type * as legal_mutations from "../legal/mutations.js";
 import type * as legal_queries from "../legal/queries.js";
 import type * as loanProducts_mutations from "../loanProducts/mutations.js";
 import type * as loanProducts_queries from "../loanProducts/queries.js";
+import type * as loans_checkSavings from "../loans/checkSavings.js";
 import type * as loans_crons from "../loans/crons.js";
 import type * as loans_helpers from "../loans/helpers.js";
 import type * as loans_mutations from "../loans/mutations.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "legal/queries": typeof legal_queries;
   "loanProducts/mutations": typeof loanProducts_mutations;
   "loanProducts/queries": typeof loanProducts_queries;
+  "loans/checkSavings": typeof loans_checkSavings;
   "loans/crons": typeof loans_crons;
   "loans/helpers": typeof loans_helpers;
   "loans/mutations": typeof loans_mutations;
