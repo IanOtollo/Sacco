@@ -137,6 +137,8 @@ export const getAdminDashboard = query({
         .filter(
           (t) =>
             new Date(t._creationTime).toISOString().slice(0, 7) === month &&
+            t.status === "completed" &&
+            t.status === "completed" &&
             COLLECTION_TYPES.has(t.type)
         )
         .reduce((s, t) => s + t.amount, 0);

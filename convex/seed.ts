@@ -675,6 +675,114 @@ export const backdoorRegisterJohnObukui = internalAction({
   },
 });
 
+// One-off reconciliation for the external-repayment and Sacco-interest-fund
+// rules. It is idempotent: existing fund credits are never duplicated and
+// only completed legacy savings debits are reversed.
+export const reconcileLoanRepaymentRules = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const actor = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "super_admin"))
+      .first();
+    if (!actor) throw new Error("A super admin is required for reconciliation");
+
+    let fund = await ctx.db
+      .query("saccoFunds")
+      .withIndex("by_key", (q) => q.eq("key", "long_term_shares"))
+      .first();
+    if (!fund) {
+      const fundId = await ctx.db.insert("saccoFunds", {
+        key: "long_term_shares",
+        balance: 0,
+        updatedAt: new Date().toISOString(),
+      });
+      fund = await ctx.db.get(fundId);
+    }
+    if (!fund) throw new Error("Could not create Sacco long-term shares fund");
+
+    const [loans, repayments] = await Promise.all([
+      ctx.db.query("loans").collect(),
+      ctx.db
+        .query("transactions")
+        .withIndex("by_type", (q) => q.eq("type", "loan_repayment"))
+        .collect(),
+    ]);
+
+    let creditedLoans = 0;
+    let fundCreditTotal = 0;
+    for (const loan of loans.filter((row) => row.status === "fully_paid")) {
+      const existingCredit = await ctx.db
+        .query("saccoFundTransactions")
+        .withIndex("by_loan", (q) => q.eq("relatedLoanId", loan._id))
+        .first();
+      if (existingCredit) continue;
+
+      const commissions = await ctx.db
+        .query("commissions")
+        .withIndex("by_loan", (q) => q.eq("loanId", loan._id))
+        .collect();
+      const inviterCommission = Math.round(
+        commissions.reduce((sum, row) => sum + row.amount, 0) * 100
+      ) / 100;
+      const retainedInterest = Math.round(
+        Math.max(loan.interestAmount - inviterCommission, 0) * 100
+      ) / 100;
+      if (retainedInterest <= 0) continue;
+
+      const balanceBefore = fund.balance;
+      const balanceAfter = Math.round((balanceBefore + retainedInterest) * 100) / 100;
+      await ctx.db.patch(fund._id, {
+        balance: balanceAfter,
+        updatedAt: new Date().toISOString(),
+      });
+      await ctx.db.insert("saccoFundTransactions", {
+        fundId: fund._id,
+        type: "loan_interest_credit",
+        amount: retainedInterest,
+        balanceBefore,
+        balanceAfter,
+        description: `Historical loan interest retained from ${loan.loanNumber}`,
+        relatedLoanId: loan._id,
+        processedBy: actor._id,
+      });
+      fund = { ...fund, balance: balanceAfter };
+      creditedLoans++;
+      fundCreditTotal += retainedInterest;
+    }
+
+    let reversedTransactions = 0;
+    let restoredSavings = 0;
+    for (const repayment of repayments.filter((row) => row.status === "completed")) {
+      const actualDebit = Math.round(
+        Math.max(repayment.balanceBefore - repayment.balanceAfter, 0) * 100
+      ) / 100;
+      if (actualDebit > 0) {
+        const account = await ctx.db.get(repayment.accountId);
+        if (!account) throw new Error(`Account missing for repayment ${repayment._id}`);
+        await ctx.db.patch(account._id, {
+          balance: Math.round((account.balance + actualDebit) * 100) / 100,
+        });
+        restoredSavings += actualDebit;
+      }
+      await ctx.db.patch(repayment._id, {
+        status: "reversed",
+        narration: "Reversed: loan repayments are external funds and do not debit savings.",
+      });
+      reversedTransactions++;
+    }
+
+    await logAction(ctx, {
+      userId: actor._id,
+      action: "loan.reconcileRepaymentRules",
+      entityType: "saccoFund",
+      entityId: fund._id,
+      details: { creditedLoans, fundCreditTotal, reversedTransactions, restoredSavings },
+    });
+
+    return { creditedLoans, fundCreditTotal, reversedTransactions, restoredSavings };
+  },
+});
 // One-off data correction: the referral commission on David Odito Osapiro's
 // EDULA-002 repayment was recorded as 25% of the repayment amount (500 ->
 // 125), from before loans/mutations.ts repay() was changed to base the
