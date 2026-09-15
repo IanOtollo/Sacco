@@ -700,6 +700,8 @@ export const reconcileLoanRepaymentRules = internalMutation({
       fund = await ctx.db.get(fundId);
     }
     if (!fund) throw new Error("Could not create Sacco long-term shares fund");
+    const fundId = fund._id;
+    let fundBalance: number = fund.balance;
 
     const [loans, repayments] = await Promise.all([
       ctx.db.query("loans").collect(),
@@ -730,14 +732,14 @@ export const reconcileLoanRepaymentRules = internalMutation({
       ) / 100;
       if (retainedInterest <= 0) continue;
 
-      const balanceBefore = fund.balance;
+      const balanceBefore: number = fundBalance;
       const balanceAfter = Math.round((balanceBefore + retainedInterest) * 100) / 100;
-      await ctx.db.patch(fund._id, {
+      await ctx.db.patch(fundId, {
         balance: balanceAfter,
         updatedAt: new Date().toISOString(),
       });
       await ctx.db.insert("saccoFundTransactions", {
-        fundId: fund._id,
+        fundId,
         type: "loan_interest_credit",
         amount: retainedInterest,
         balanceBefore,
@@ -746,7 +748,7 @@ export const reconcileLoanRepaymentRules = internalMutation({
         relatedLoanId: loan._id,
         processedBy: actor._id,
       });
-      fund = { ...fund, balance: balanceAfter };
+      fundBalance = balanceAfter;
       creditedLoans++;
       fundCreditTotal += retainedInterest;
     }
@@ -776,7 +778,7 @@ export const reconcileLoanRepaymentRules = internalMutation({
       userId: actor._id,
       action: "loan.reconcileRepaymentRules",
       entityType: "saccoFund",
-      entityId: fund._id,
+      entityId: fundId,
       details: { creditedLoans, fundCreditTotal, reversedTransactions, restoredSavings },
     });
 
