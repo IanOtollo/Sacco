@@ -574,18 +574,16 @@ export const repay = mutation({
     }
     if (amount <= 0) throw new Error("Amount must be greater than zero");
 
-    // Non-member borrowers have no savings account — their repayments are
-    // fresh cash/mpesa/bank funds applied straight to the loan, not a debit
-    // against an internal balance the way a member's repayment works.
+    // Look up the member's savings account so the repayment can be recorded
+    // against it, but do NOT debit the balance — loan repayments are
+    // external money (cash/mpesa/bank) the member brings into the Sacco,
+    // not funds withdrawn from their savings.
     const savingsAccount = await ctx.db
       .query("accounts")
       .withIndex("by_member_type", (q) =>
         q.eq("memberId", loan.memberId).eq("type", "savings")
       )
       .first();
-    if (savingsAccount && savingsAccount.balance < amount) {
-      throw new Error("Insufficient savings balance to make this repayment");
-    }
 
     const schedule = await ctx.db
       .query("loanSchedule")
@@ -624,18 +622,16 @@ export const repay = mutation({
       remaining = round2(remaining - applied);
     }
 
+    // Record the repayment as money received from outside the Sacco —
+    // the savings balance is NOT touched.
     if (savingsAccount) {
-      const balanceBefore = savingsAccount.balance;
-      const balanceAfter = round2(balanceBefore - amount);
-      await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
-
       await ctx.db.insert("transactions", {
         accountId: savingsAccount._id,
         memberId: loan.memberId,
         type: "loan_repayment",
         amount,
-        balanceBefore,
-        balanceAfter,
+        balanceBefore: savingsAccount.balance,
+        balanceAfter: savingsAccount.balance,
         description: `Loan repayment — ${loan.loanNumber}`,
         referenceNumber: generateReferenceNumber(),
         relatedLoanId: loanId,
