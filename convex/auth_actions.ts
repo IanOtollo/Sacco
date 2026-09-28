@@ -56,11 +56,18 @@ export const changePassword = action({
       throw new Error("No login ID on file for this account");
     }
 
-    const verified = await retrieveAccount(ctx, {
-      provider: "password",
-      account: { id: user.email, secret: currentPassword },
-    });
-    if (!verified) {
+    // retrieveAccount doesn't return a falsy value on a wrong password —
+    // it throws "InvalidSecret" (or "InvalidAccountId"/"TooManyFailedAttempts")
+    // — so the check has to happen in a catch, not on the return value.
+    try {
+      await retrieveAccount(ctx, {
+        provider: "password",
+        account: { id: user.email, secret: currentPassword },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "TooManyFailedAttempts") {
+        throw new Error("Too many attempts. Please try again later.");
+      }
       throw new Error("Current password is incorrect");
     }
 

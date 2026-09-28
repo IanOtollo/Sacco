@@ -25,6 +25,28 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   shares_capital: "capital shares",
 };
 
+// A rejected claim frees up its reference for a corrected resubmission, but
+// a pending or already-approved one means this M-Pesa/bank code has already
+// been claimed — reusing it (by mistake or otherwise) would double-credit
+// whoever gets approved second.
+async function assertReferenceNotClaimed(
+  ctx: import("../_generated/server").MutationCtx,
+  transactionReference: string
+) {
+  const existing = await ctx.db
+    .query("depositClaims")
+    .withIndex("by_transactionReference", (q) =>
+      q.eq("transactionReference", transactionReference)
+    )
+    .filter((q) => q.neq(q.field("status"), "rejected"))
+    .first();
+  if (existing) {
+    throw new Error(
+      "This transaction reference has already been claimed. Contact the treasurer if you believe this is a mistake."
+    );
+  }
+}
+
 // Member self-reports a deposit they made — stays pending until the
 // treasurer cross-checks the transaction reference and approves it.
 export const submit = mutation({
@@ -41,16 +63,18 @@ export const submit = mutation({
     if (args.amount <= 0) {
       throw new Error("Amount must be greater than zero");
     }
-    if (!args.transactionReference.trim()) {
+    const transactionReference = args.transactionReference.trim();
+    if (!transactionReference) {
       throw new Error("Enter the M-Pesa or bank transaction reference");
     }
+    await assertReferenceNotClaimed(ctx, transactionReference);
 
     const claimId = await ctx.db.insert("depositClaims", {
       memberId: caller.memberId!,
       accountType: args.accountType,
       amount: args.amount,
       channel: args.channel,
-      transactionReference: args.transactionReference.trim(),
+      transactionReference,
       note: args.note,
       status: "pending",
       submittedBy: caller._id,
@@ -191,6 +215,11 @@ export const recordDirect = mutation({
     if (args.amount <= 0) {
       throw new Error("Amount must be greater than zero");
     }
+    const transactionReference = args.transactionReference.trim();
+    if (!transactionReference) {
+      throw new Error("Enter the M-Pesa or bank transaction reference");
+    }
+    await assertReferenceNotClaimed(ctx, transactionReference);
 
     const member = await ctx.db.get(args.memberId);
     if (!member) throw new Error("Member not found");
@@ -200,7 +229,7 @@ export const recordDirect = mutation({
       type: args.accountType,
       amount: args.amount,
       channel: args.channel,
-      description: `Deposit recorded by treasurer — ref ${args.transactionReference}`,
+      description: `Deposit recorded by treasurer — ref ${transactionReference}`,
       processedBy: treasurer._id,
     });
 
@@ -209,7 +238,7 @@ export const recordDirect = mutation({
       accountType: args.accountType,
       amount: args.amount,
       channel: args.channel,
-      transactionReference: args.transactionReference.trim(),
+      transactionReference,
       note: args.note,
       status: "approved",
       submittedBy: treasurer._id,

@@ -19,6 +19,21 @@ export const declare = mutation({
   handler: async (ctx, args) => {
     const admin = await requireTreasurer(ctx);
 
+    // A cancelled dividend doesn't block redeclaring the same year/round,
+    // but a declared/processing/distributed one does — otherwise a
+    // double-click (or a second deliberate run) inserts a whole second
+    // batch of dividendPayouts and pays every shareholder twice.
+    const sameYear = await ctx.db
+      .query("dividends")
+      .withIndex("by_year", (q) => q.eq("financialYear", args.financialYear))
+      .filter((q) => q.neq(q.field("status"), "cancelled"))
+      .collect();
+    if (sameYear.some((d) => (d.round ?? "first") === args.round)) {
+      throw new Error(
+        `A ${args.round} dividend for ${args.financialYear} has already been declared. Cancel it first if you need to redeclare.`
+      );
+    }
+
     const dividendId = await ctx.db.insert("dividends", {
       financialYear: args.financialYear,
       round: args.round,

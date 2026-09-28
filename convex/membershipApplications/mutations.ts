@@ -1,13 +1,13 @@
 import { v } from "convex/values";
 import { mutation, action, internalMutation, internalQuery } from "../_generated/server";
-import { createAccount } from "@convex-dev/auth/server";
+import { createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { normalizeNationalId } from "../../lib/national-id";
 import { normalizeKenyanPhone } from "../../lib/phone";
 import { requireAdmin } from "../authz";
 import { logAction, logSystemAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { internal } from "../_generated/api";
-import { Doc } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 
 const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
@@ -45,30 +45,53 @@ export const submit = action({
       internal.membershipApplications.mutations.findDuplicate,
       { nationalId, phoneNumber: phone }
     );
-    if (duplicate === "member") {
+    if (duplicate?.kind === "member") {
       throw new Error("A member with this National ID or phone number is already registered.");
     }
-    if (duplicate === "application") {
+    if (duplicate?.kind === "pending") {
       throw new Error(
         "An application with this National ID or phone number is already pending review."
       );
     }
 
-    const { user } = await createAccount(ctx, {
-      provider: "password",
-      account: { id: nationalId, secret: args.password },
-      profile: {
-        email: nationalId,
-        nationalId,
+    let userId: Id<"users">;
+    if (duplicate?.kind === "reapply") {
+      // This National ID was rejected before — its auth account already
+      // exists from the first attempt. `createAccount` would throw "Account
+      // X already exists" here (or, if the password happens to match the
+      // old one byte-for-byte, silently reuse the stale account without
+      // updating anything). Reuse it explicitly instead: refresh the
+      // password and profile fields, so a corrected reapplication actually
+      // takes.
+      await modifyAccountCredentials(ctx, {
+        provider: "password",
+        account: { id: nationalId, secret: args.password },
+      });
+      userId = duplicate.userId;
+      await ctx.runMutation(internal.membershipApplications.mutations.resetRejectedUser, {
+        userId,
+        firstName: args.firstName,
+        lastName: args.lastName,
         phone,
-        name: `${args.firstName} ${args.lastName}`,
-        isActive: false,
-        applicationStatus: "pending",
-      },
-    });
+      });
+    } else {
+      const { user } = await createAccount(ctx, {
+        provider: "password",
+        account: { id: nationalId, secret: args.password },
+        profile: {
+          email: nationalId,
+          nationalId,
+          phone,
+          name: `${args.firstName} ${args.lastName}`,
+          isActive: false,
+          applicationStatus: "pending",
+        },
+      });
+      userId = user._id;
+    }
 
     await ctx.runMutation(internal.membershipApplications.mutations.recordApplication, {
-      userId: user._id,
+      userId,
       firstName: args.firstName,
       lastName: args.lastName,
       nationalId,
@@ -84,7 +107,15 @@ export const submit = action({
 
 export const findDuplicate = internalQuery({
   args: { nationalId: v.string(), phoneNumber: v.optional(v.string()) },
-  handler: async (ctx, { nationalId, phoneNumber }) => {
+  handler: async (
+    ctx,
+    { nationalId, phoneNumber }
+  ): Promise<
+    | { kind: "member" }
+    | { kind: "pending" }
+    | { kind: "reapply"; userId: Id<"users"> }
+    | null
+  > => {
     // Non-member loan placeholders (isNonMember: true) don't count as a
     // registered member here — someone who's only ever been recorded as a
     // non-member borrower is still registering for the first time. Their
@@ -94,24 +125,50 @@ export const findDuplicate = internalQuery({
       .query("members")
       .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
       .first();
-    if (memberById && !memberById.isNonMember) return "member" as const;
+    if (memberById && !memberById.isNonMember) return { kind: "member" };
 
     if (phoneNumber) {
       const memberByPhone = await ctx.db
         .query("members")
         .withIndex("by_phone", (q) => q.eq("phoneNumber", phoneNumber))
         .first();
-      if (memberByPhone && !memberByPhone.isNonMember) return "member" as const;
+      if (memberByPhone && !memberByPhone.isNonMember) return { kind: "member" };
     }
 
-    const application = await ctx.db
+    const applications = await ctx.db
       .query("membershipApplications")
       .withIndex("by_nationalId", (q) => q.eq("nationalId", nationalId))
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .first();
-    if (application) return "application" as const;
+      .collect();
+    if (applications.some((a) => a.status === "pending")) return { kind: "pending" };
+
+    // Every application for a given National ID shares the same auth
+    // account (created once, at the first submission — see submit() below),
+    // so any rejected row here points at the same userId to reuse.
+    const rejected = applications.find((a) => a.status === "rejected");
+    if (rejected) return { kind: "reapply", userId: rejected.userId };
 
     return null;
+  },
+});
+
+// Reactivates a previously-rejected applicant's account for a fresh
+// application — see submit()'s "reapply" branch. Only touches the fields a
+// resubmission can legitimately correct; nationalId is the lookup key so it
+// never changes here.
+export const resetRejectedUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.string(),
+  },
+  handler: async (ctx, { userId, firstName, lastName, phone }) => {
+    await ctx.db.patch(userId, {
+      name: `${firstName} ${lastName}`,
+      phone,
+      isActive: false,
+      applicationStatus: "pending",
+    });
   },
 });
 

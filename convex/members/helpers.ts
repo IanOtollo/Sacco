@@ -27,10 +27,14 @@ const PASSWORD_CHARS =
 
 // System-generated temporary password for a newly registered member —
 // they're required to change it on first login (see ForcePasswordChange).
+// Uses the Web Crypto API (available in Convex's default runtime), not
+// Math.random(), since this is a real login credential even if short-lived.
 export function generateDefaultPassword(): string {
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
   let out = "";
-  for (let i = 0; i < 10; i++) {
-    out += PASSWORD_CHARS[Math.floor(Math.random() * PASSWORD_CHARS.length)];
+  for (let i = 0; i < bytes.length; i++) {
+    out += PASSWORD_CHARS[bytes[i] % PASSWORD_CHARS.length];
   }
   return out;
 }

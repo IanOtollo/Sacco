@@ -43,11 +43,14 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   const approve = useMutation(api.loans.mutations.approve);
   const disburse = useMutation(api.loans.mutations.disburse);
   const writeOff = useMutation(api.loans.mutations.writeOff);
+  const markDefaulted = useMutation(api.loans.mutations.markDefaulted);
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [writeOffOpen, setWriteOffOpen] = useState(false);
   const [writeOffReason, setWriteOffReason] = useState("");
+  const [defaultOpen, setDefaultOpen] = useState(false);
+  const [defaultReason, setDefaultReason] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [disburseConfirm, setDisburseConfirm] = useState(false);
   const [approveConfirm, setApproveConfirm] = useState(false);
@@ -104,6 +107,17 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
       setWriteOffReason("");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not write off loan");
+    }
+  }
+
+  async function handleMarkDefaulted() {
+    try {
+      await markDefaulted({ loanId: loan!._id, reason: defaultReason });
+      toast.success("Loan marked as defaulted");
+      setDefaultOpen(false);
+      setDefaultReason("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not mark loan as defaulted");
     }
   }
 
@@ -223,12 +237,21 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
               Disburse
             </Button>
           )}
-          {["active", "disbursed"].includes(loan.status) && (
+          {["active", "disbursed", "defaulted"].includes(loan.status) && (
             <>
               <Button onClick={() => setPayOpen(true)}>
                 <CreditCard className="size-4" />
                 Record repayment
               </Button>
+              {["active", "disbursed"].includes(loan.status) && (
+                <Button
+                  variant="outline"
+                  onClick={() => setDefaultOpen(true)}
+                >
+                  <Ban className="size-4" />
+                  Mark as defaulted
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="text-danger hover:text-danger"
@@ -295,6 +318,32 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
             onClick={handleReject}
           >
             Confirm rejection
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={defaultOpen} onOpenChange={setDefaultOpen}>
+        <DialogContent className="max-w-sm sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark this loan as defaulted?</DialogTitle>
+            <DialogDescription>
+              Flags the borrower as having stopped paying. It can still be
+              repaid or written off later — this doesn&apos;t cancel the debt.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={defaultReason}
+            onChange={(e) => setDefaultReason(e.target.value)}
+            placeholder="Reason"
+            rows={3}
+          />
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={!defaultReason.trim()}
+            onClick={handleMarkDefaulted}
+          >
+            Confirm default
           </Button>
         </DialogContent>
       </Dialog>

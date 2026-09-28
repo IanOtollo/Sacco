@@ -569,10 +569,15 @@ export const repay = mutation({
     const isAdmin = caller.role === "admin" || caller.role === "super_admin";
     if (!isSelf && !isAdmin) throw new Error("Not authorized");
 
-    if (!["active", "disbursed"].includes(loan.status)) {
+    if (!["active", "disbursed", "defaulted"].includes(loan.status)) {
       throw new Error("This loan is not currently active");
     }
     if (amount <= 0) throw new Error("Amount must be greater than zero");
+    if (amount > loan.outstandingBalance + 0.01) {
+      throw new Error(
+        `Amount exceeds the outstanding balance of KES ${loan.outstandingBalance.toLocaleString()}`
+      );
+    }
 
     // Repayments are external cash, M-Pesa, or bank funds for every borrower.
     // They reduce only the loan; a member's savings balance is never debited.
@@ -621,7 +626,10 @@ export const repay = mutation({
     await ctx.db.patch(loanId, {
       totalPaid: newTotalPaid,
       outstandingBalance: newOutstanding,
-      status: fullyPaidLoan ? "fully_paid" : "active",
+      // A partial repayment on a defaulted loan doesn't undo the default —
+      // only paying it off in full, or an admin writing it off, changes
+      // that status.
+      status: fullyPaidLoan ? "fully_paid" : loan.status === "defaulted" ? "defaulted" : "active",
     });
 
     const member = await ctx.db.get(loan.memberId);
@@ -731,12 +739,17 @@ export const repay = mutation({
   },
 });
 
+const WRITE_OFF_ELIGIBLE_STATUSES = new Set(["disbursed", "active", "defaulted"]);
+
 export const writeOff = mutation({
   args: { loanId: v.id("loans"), reason: v.string() },
   handler: async (ctx, { loanId, reason }) => {
     const admin = await requireAdmin(ctx);
     const loan = await ctx.db.get(loanId);
     if (!loan) throw new Error("Loan not found");
+    if (!WRITE_OFF_ELIGIBLE_STATUSES.has(loan.status)) {
+      throw new Error("Only a disbursed, active, or defaulted loan can be written off");
+    }
 
     await ctx.db.patch(loanId, { status: "written_off" });
 
@@ -755,6 +768,45 @@ export const writeOff = mutation({
     await logAction(ctx, {
       userId: admin._id,
       action: "loan.writeOff",
+      entityType: "loan",
+      entityId: loanId,
+      details: { reason },
+    });
+  },
+});
+
+// Manually flags a loan as defaulted — there's no automatic threshold (days
+// overdue, arrears amount, etc.) defined by the Sacco's policy yet, so this
+// is an admin judgment call rather than a cron. Distinct from writeOff:
+// defaulting records that the borrower has stopped paying without yet
+// declaring the debt unrecoverable — it can still be written off later.
+export const markDefaulted = mutation({
+  args: { loanId: v.id("loans"), reason: v.string() },
+  handler: async (ctx, { loanId, reason }) => {
+    const admin = await requireAdmin(ctx);
+    const loan = await ctx.db.get(loanId);
+    if (!loan) throw new Error("Loan not found");
+    if (!["disbursed", "active"].includes(loan.status)) {
+      throw new Error("Only a disbursed or active loan can be marked defaulted");
+    }
+
+    await ctx.db.patch(loanId, { status: "defaulted" });
+
+    const member = await ctx.db.get(loan.memberId);
+    if (member?.userId) {
+      await notify(ctx, {
+        recipientUserId: member.userId,
+        title: "Loan marked as defaulted",
+        message: `Your loan ${loan.loanNumber} has been marked as defaulted by the Sacco.`,
+        type: "loan_update",
+        relatedEntityType: "loan",
+        relatedEntityId: loanId,
+      });
+    }
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "loan.markDefaulted",
       entityType: "loan",
       entityId: loanId,
       details: { reason },

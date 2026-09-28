@@ -205,7 +205,8 @@ export default defineSchema({
     rejectionReason: v.optional(v.string()),
   })
     .index("by_member", ["memberId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_transactionReference", ["transactionReference"]),
 
   // ─── MEMBERSHIP APPLICATIONS ──────────────────────
   // Public self-registration. The auth account is created immediately at
