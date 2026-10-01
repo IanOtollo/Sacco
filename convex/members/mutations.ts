@@ -264,9 +264,9 @@ export const setCommitteeRole = mutation({
       throw new Error("This member has no linked login account");
     }
 
-    // Only one chairman and one deputy chairman at a time — stepping the
-    // previous holder down when someone new is appointed.
-    if (committeeRole && TOP_OFFICES.has(committeeRole)) {
+    // Several members may be chairman at once, but only one deputy chairman —
+    // stepping the previous deputy down when someone new is appointed.
+    if (committeeRole === "deputy_chairman") {
       const previousHolder = await ctx.db
         .query("members")
         .withIndex("by_committeeRole", (q) => q.eq("committeeRole", committeeRole))

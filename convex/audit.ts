@@ -32,20 +32,21 @@ async function notifyChairmanIfDeputyAction(
   const actor = await ctx.db.get(args.userId);
   if (!actor || actor.committeeRole !== "deputy_chairman") return;
 
-  const chairman = await ctx.db
+  const chairmen = await ctx.db
     .query("users")
     .filter((q) => q.eq(q.field("committeeRole"), "chairman"))
-    .first();
-  if (!chairman) return;
+    .collect();
 
-  await notify(ctx, {
-    recipientUserId: chairman._id,
-    title: "Deputy chairman action",
-    message: `${actor.name ?? "The deputy chairman"} performed "${args.action}" on ${args.entityType}.`,
-    type: "system",
-    relatedEntityType: args.entityType,
-    relatedEntityId: args.entityId,
-  });
+  for (const chairman of chairmen) {
+    await notify(ctx, {
+      recipientUserId: chairman._id,
+      title: "Deputy chairman action",
+      message: `${actor.name ?? "The deputy chairman"} performed "${args.action}" on ${args.entityType}.`,
+      type: "system",
+      relatedEntityType: args.entityType,
+      relatedEntityId: args.entityId,
+    });
+  }
 }
 
 // Cron jobs act with no signed-in user. Attribute their audit entries to a

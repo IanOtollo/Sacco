@@ -27,7 +27,7 @@ const ROLE_LABEL: Record<RoleChoice, string> = {
 
 const ROLE_WARNING: Partial<Record<RoleChoice, string>> = {
   chairman:
-    "This will give this member full admin access (super admin) and step down the current chairman, if any.",
+    "This will give this member full admin access (super admin). Other chairmen keep their role.",
   deputy_chairman:
     "This will give this member full admin access (super admin) and step down the current deputy chairman, if any. The chairman is notified of everything the deputy does.",
 };
