@@ -12,20 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 
 type CommitteeRole = "chairman" | "deputy_chairman" | "secretary" | "treasurer";
+type RoleChoice = CommitteeRole | "admin" | "none";
 
-const ROLE_LABEL: Record<CommitteeRole | "none", string> = {
+const ROLE_LABEL: Record<RoleChoice, string> = {
   none: "Member",
+  admin: "Admin",
   chairman: "Chairman",
   deputy_chairman: "Deputy Chairman",
   secretary: "Secretary",
   treasurer: "Treasurer",
 };
 
-const ROLE_WARNING: Partial<Record<CommitteeRole, string>> = {
+const ROLE_WARNING: Partial<Record<RoleChoice, string>> = {
+  admin:
+    "This gives this member full admin access (super admin) and the admin UI. Any committee office they hold is removed.",
   chairman:
     "This will give this member full admin access (super admin) and step down the current chairman, if any.",
   deputy_chairman:
@@ -43,29 +46,14 @@ export function CommitteeRoleSelect({
 }) {
   const currentUser = useQuery(api.users.getCurrentUser);
   const setCommitteeRole = useMutation(api.members.mutations.setCommitteeRole);
-  const setAdminAccess = useMutation(api.members.mutations.setAdminAccess);
-  const [pending, setPending] = useState<CommitteeRole | "none" | null>(null);
-  const [pendingAdmin, setPendingAdmin] = useState<boolean | null>(null);
-  const isTopOffice = currentRole === "chairman" || currentRole === "deputy_chairman";
+  const [pending, setPending] = useState<RoleChoice | null>(null);
 
-  async function handleAdminConfirm() {
-    if (pendingAdmin === null) return;
-    try {
-      await setAdminAccess({ memberId, isAdmin: pendingAdmin });
-      toast.success(pendingAdmin ? "Admin access granted" : "Admin access removed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update admin access"
-      );
-    } finally {
-      setPendingAdmin(null);
-    }
-  }
+  const currentChoice: RoleChoice = currentRole ?? (isAdmin ? "admin" : "none");
 
   if (currentUser?.role !== "super_admin") {
     return (
       <p className="text-sm text-muted-foreground">
-        Role: <span className="font-medium text-foreground">{ROLE_LABEL[currentRole ?? "none"]}</span>
+        Role: <span className="font-medium text-foreground">{ROLE_LABEL[currentChoice]}</span>
       </p>
     );
   }
@@ -92,51 +80,33 @@ export function CommitteeRoleSelect({
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">Role</span>
         <Select
-          value={currentRole ?? "none"}
-          onValueChange={(v) => setPending(v as CommitteeRole | "none")}
+          value={currentChoice}
+          onValueChange={(v) => {
+            if (v !== currentChoice) setPending(v as RoleChoice);
+          }}
         >
           <SelectTrigger className="w-full max-w-48">
             <SelectValue>
-              {(value: CommitteeRole | "none" | null) =>
-                ROLE_LABEL[value ?? "none"]
-              }
+              {(value: RoleChoice | null) => ROLE_LABEL[value ?? "none"]}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">{ROLE_LABEL.none}</SelectItem>
+            <SelectItem value="admin">{ROLE_LABEL.admin}</SelectItem>
             <SelectItem value="chairman">{ROLE_LABEL.chairman}</SelectItem>
             <SelectItem value="deputy_chairman">{ROLE_LABEL.deputy_chairman}</SelectItem>
             <SelectItem value="secretary">{ROLE_LABEL.secretary}</SelectItem>
             <SelectItem value="treasurer">{ROLE_LABEL.treasurer}</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-xs text-muted-foreground">Admin access</span>
-        <Switch
-          checked={isAdmin || isTopOffice}
-          disabled={isTopOffice}
-          onCheckedChange={(checked) => setPendingAdmin(checked)}
-        />
       </div>
-
-      <ConfirmModal
-        open={pendingAdmin !== null}
-        onOpenChange={(open) => !open && setPendingAdmin(null)}
-        title={pendingAdmin ? "Grant admin access?" : "Remove admin access?"}
-        description={
-          pendingAdmin
-            ? "This gives this member full admin (super admin) rights and the admin UI, without changing their committee role."
-            : "This returns this member to an ordinary member account."
-        }
-        confirmLabel="Confirm"
-        onConfirm={handleAdminConfirm}
-      />
 
       <ConfirmModal
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
         title={`Set role to "${pending ? ROLE_LABEL[pending] : ""}"?`}
         description={
-          (pending && pending !== "none" ? ROLE_WARNING[pending] : undefined) ??
+          (pending ? ROLE_WARNING[pending] : undefined) ??
           "This changes what this member can see and do across the Sacco MIS."
         }
         confirmLabel="Confirm"

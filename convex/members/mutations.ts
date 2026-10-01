@@ -246,41 +246,6 @@ const committeeRoleValidator = v.union(
 
 const TOP_OFFICES = new Set(["chairman", "deputy_chairman"]);
 
-// Grants or revokes full admin (super_admin) system access for a specific
-// member, independent of their committee office. Lets e.g. a secretary be
-// made admin without displacing the chairman or deputy chairman.
-export const setAdminAccess = mutation({
-  args: { memberId: v.id("members"), isAdmin: v.boolean() },
-  handler: async (ctx, { memberId, isAdmin }) => {
-    const admin = await requireSuperAdmin(ctx);
-    const member = await ctx.db.get(memberId);
-    if (!member) throw new Error("Member not found");
-    if (!member.userId) {
-      throw new Error("This member has no linked login account");
-    }
-    const user = await ctx.db.get(member.userId);
-    if (!user) throw new Error("Linked user account not found");
-    if (!isAdmin && user._id === admin._id) {
-      throw new Error("You cannot remove your own admin access");
-    }
-    if (!isAdmin && member.committeeRole && TOP_OFFICES.has(member.committeeRole)) {
-      throw new Error(
-        "Chairman and deputy chairman are admins by office — change their committee role instead"
-      );
-    }
-
-    await ctx.db.patch(user._id, { role: isAdmin ? "super_admin" : "member" });
-
-    await logAction(ctx, {
-      userId: admin._id,
-      action: "member.setAdminAccess",
-      entityType: "member",
-      entityId: memberId,
-      details: { isAdmin },
-    });
-  },
-});
-
 // Governance-sensitive — only a super admin can appoint or remove chairman,
 // deputy chairman, secretary, or treasurer. Chairman/deputy are promoted to
 // role "super_admin" (matching the spec's "chairman = super_admin, can do
@@ -289,14 +254,21 @@ export const setAdminAccess = mutation({
 export const setCommitteeRole = mutation({
   args: {
     memberId: v.id("members"),
-    committeeRole: v.optional(committeeRoleValidator),
+    committeeRole: v.optional(v.union(committeeRoleValidator, v.literal("admin"))),
   },
-  handler: async (ctx, { memberId, committeeRole }) => {
+  handler: async (ctx, { memberId, committeeRole: requestedRole }) => {
     const admin = await requireSuperAdmin(ctx);
+    // "admin" = full system access (super_admin) with no committee office.
+    const makeAdmin = requestedRole === "admin";
+    const committeeRole = makeAdmin ? undefined : requestedRole;
     const member = await ctx.db.get(memberId);
     if (!member) throw new Error("Member not found");
     if (!member.userId) {
       throw new Error("This member has no linked login account");
+    }
+
+    if (member.userId === admin._id && requestedRole === undefined) {
+      throw new Error("You cannot remove your own admin access");
     }
 
     // Only one chairman and one deputy chairman at a time — stepping the
@@ -322,9 +294,11 @@ export const setCommitteeRole = mutation({
 
     await ctx.db.patch(memberId, { committeeRole });
 
-    if (willBeTopOffice) {
+    if (makeAdmin) {
+      await ctx.db.patch(member.userId, { committeeRole: undefined, role: "super_admin" });
+    } else if (willBeTopOffice) {
       await ctx.db.patch(member.userId, { committeeRole, role: "super_admin" });
-    } else if (wasTopOffice) {
+    } else if (wasTopOffice || requestedRole === undefined) {
       // Stepping down from chairman/deputy — back to an ordinary member.
       await ctx.db.patch(member.userId, { committeeRole, role: "member" });
     } else {
@@ -336,7 +310,7 @@ export const setCommitteeRole = mutation({
       action: "member.setCommitteeRole",
       entityType: "member",
       entityId: memberId,
-      details: { committeeRole: committeeRole ?? null },
+      details: { committeeRole: requestedRole ?? null },
     });
   },
 });
