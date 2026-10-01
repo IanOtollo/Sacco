@@ -90,7 +90,9 @@ export const getById = query({
       ? await ctx.storage.getUrl(member.profilePhoto)
       : null;
 
-    return { ...member, accounts, photoUrl };
+    const linkedUser = member.userId ? await ctx.db.get(member.userId) : null;
+
+    return { ...member, accounts, photoUrl, userRole: linkedUser?.role };
   },
 });
 

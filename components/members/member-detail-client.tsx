@@ -142,7 +142,11 @@ export function MemberDetailClient({ memberId }: { memberId: string }) {
             </p>
             {!member.isNonMember && (
               <div className="mt-2">
-                <CommitteeRoleSelect memberId={member._id} currentRole={member.committeeRole} />
+                <CommitteeRoleSelect
+                  memberId={member._id}
+                  currentRole={member.committeeRole}
+                  isAdmin={member.userRole === "super_admin"}
+                />
               </div>
             )}
           </div>

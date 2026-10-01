@@ -246,6 +246,41 @@ const committeeRoleValidator = v.union(
 
 const TOP_OFFICES = new Set(["chairman", "deputy_chairman"]);
 
+// Grants or revokes full admin (super_admin) system access for a specific
+// member, independent of their committee office. Lets e.g. a secretary be
+// made admin without displacing the chairman or deputy chairman.
+export const setAdminAccess = mutation({
+  args: { memberId: v.id("members"), isAdmin: v.boolean() },
+  handler: async (ctx, { memberId, isAdmin }) => {
+    const admin = await requireSuperAdmin(ctx);
+    const member = await ctx.db.get(memberId);
+    if (!member) throw new Error("Member not found");
+    if (!member.userId) {
+      throw new Error("This member has no linked login account");
+    }
+    const user = await ctx.db.get(member.userId);
+    if (!user) throw new Error("Linked user account not found");
+    if (!isAdmin && user._id === admin._id) {
+      throw new Error("You cannot remove your own admin access");
+    }
+    if (!isAdmin && member.committeeRole && TOP_OFFICES.has(member.committeeRole)) {
+      throw new Error(
+        "Chairman and deputy chairman are admins by office — change their committee role instead"
+      );
+    }
+
+    await ctx.db.patch(user._id, { role: isAdmin ? "super_admin" : "member" });
+
+    await logAction(ctx, {
+      userId: admin._id,
+      action: "member.setAdminAccess",
+      entityType: "member",
+      entityId: memberId,
+      details: { isAdmin },
+    });
+  },
+});
+
 // Governance-sensitive — only a super admin can appoint or remove chairman,
 // deputy chairman, secretary, or treasurer. Chairman/deputy are promoted to
 // role "super_admin" (matching the spec's "chairman = super_admin, can do

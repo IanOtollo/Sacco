@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 
 type CommitteeRole = "chairman" | "deputy_chairman" | "secretary" | "treasurer";
@@ -34,13 +35,32 @@ const ROLE_WARNING: Partial<Record<CommitteeRole, string>> = {
 export function CommitteeRoleSelect({
   memberId,
   currentRole,
+  isAdmin = false,
 }: {
   memberId: Id<"members">;
   currentRole: CommitteeRole | undefined;
+  isAdmin?: boolean;
 }) {
   const currentUser = useQuery(api.users.getCurrentUser);
   const setCommitteeRole = useMutation(api.members.mutations.setCommitteeRole);
+  const setAdminAccess = useMutation(api.members.mutations.setAdminAccess);
   const [pending, setPending] = useState<CommitteeRole | "none" | null>(null);
+  const [pendingAdmin, setPendingAdmin] = useState<boolean | null>(null);
+  const isTopOffice = currentRole === "chairman" || currentRole === "deputy_chairman";
+
+  async function handleAdminConfirm() {
+    if (pendingAdmin === null) return;
+    try {
+      await setAdminAccess({ memberId, isAdmin: pendingAdmin });
+      toast.success(pendingAdmin ? "Admin access granted" : "Admin access removed");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update admin access"
+      );
+    } finally {
+      setPendingAdmin(null);
+    }
+  }
 
   if (currentUser?.role !== "super_admin") {
     return (
@@ -90,7 +110,26 @@ export function CommitteeRoleSelect({
             <SelectItem value="treasurer">{ROLE_LABEL.treasurer}</SelectItem>
           </SelectContent>
         </Select>
+        <span className="text-xs text-muted-foreground">Admin access</span>
+        <Switch
+          checked={isAdmin || isTopOffice}
+          disabled={isTopOffice}
+          onCheckedChange={(checked) => setPendingAdmin(checked)}
+        />
       </div>
+
+      <ConfirmModal
+        open={pendingAdmin !== null}
+        onOpenChange={(open) => !open && setPendingAdmin(null)}
+        title={pendingAdmin ? "Grant admin access?" : "Remove admin access?"}
+        description={
+          pendingAdmin
+            ? "This gives this member full admin (super admin) rights and the admin UI, without changing their committee role."
+            : "This returns this member to an ordinary member account."
+        }
+        confirmLabel="Confirm"
+        onConfirm={handleAdminConfirm}
+      />
 
       <ConfirmModal
         open={pending !== null}
