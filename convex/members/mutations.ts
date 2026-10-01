@@ -254,21 +254,14 @@ const TOP_OFFICES = new Set(["chairman", "deputy_chairman"]);
 export const setCommitteeRole = mutation({
   args: {
     memberId: v.id("members"),
-    committeeRole: v.optional(v.union(committeeRoleValidator, v.literal("admin"))),
+    committeeRole: v.optional(committeeRoleValidator),
   },
-  handler: async (ctx, { memberId, committeeRole: requestedRole }) => {
+  handler: async (ctx, { memberId, committeeRole }) => {
     const admin = await requireSuperAdmin(ctx);
-    // "admin" = full system access (super_admin) with no committee office.
-    const makeAdmin = requestedRole === "admin";
-    const committeeRole = makeAdmin ? undefined : requestedRole;
     const member = await ctx.db.get(memberId);
     if (!member) throw new Error("Member not found");
     if (!member.userId) {
       throw new Error("This member has no linked login account");
-    }
-
-    if (member.userId === admin._id && requestedRole === undefined) {
-      throw new Error("You cannot remove your own admin access");
     }
 
     // Only one chairman and one deputy chairman at a time — stepping the
@@ -294,11 +287,9 @@ export const setCommitteeRole = mutation({
 
     await ctx.db.patch(memberId, { committeeRole });
 
-    if (makeAdmin) {
-      await ctx.db.patch(member.userId, { committeeRole: undefined, role: "super_admin" });
-    } else if (willBeTopOffice) {
+    if (willBeTopOffice) {
       await ctx.db.patch(member.userId, { committeeRole, role: "super_admin" });
-    } else if (wasTopOffice || requestedRole === undefined) {
+    } else if (wasTopOffice) {
       // Stepping down from chairman/deputy — back to an ordinary member.
       await ctx.db.patch(member.userId, { committeeRole, role: "member" });
     } else {
@@ -310,7 +301,7 @@ export const setCommitteeRole = mutation({
       action: "member.setCommitteeRole",
       entityType: "member",
       entityId: memberId,
-      details: { committeeRole: requestedRole ?? null },
+      details: { committeeRole: committeeRole ?? null },
     });
   },
 });

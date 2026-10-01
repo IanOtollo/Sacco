@@ -15,11 +15,10 @@ import {
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 
 type CommitteeRole = "chairman" | "deputy_chairman" | "secretary" | "treasurer";
-type RoleChoice = CommitteeRole | "admin" | "none";
+type RoleChoice = CommitteeRole | "none";
 
 const ROLE_LABEL: Record<RoleChoice, string> = {
   none: "Member",
-  admin: "Admin",
   chairman: "Chairman",
   deputy_chairman: "Deputy Chairman",
   secretary: "Secretary",
@@ -27,8 +26,6 @@ const ROLE_LABEL: Record<RoleChoice, string> = {
 };
 
 const ROLE_WARNING: Partial<Record<RoleChoice, string>> = {
-  admin:
-    "This gives this member full admin access (super admin) and the admin UI. Any committee office they hold is removed.",
   chairman:
     "This will give this member full admin access (super admin) and step down the current chairman, if any.",
   deputy_chairman:
@@ -38,17 +35,15 @@ const ROLE_WARNING: Partial<Record<RoleChoice, string>> = {
 export function CommitteeRoleSelect({
   memberId,
   currentRole,
-  isAdmin = false,
 }: {
   memberId: Id<"members">;
   currentRole: CommitteeRole | undefined;
-  isAdmin?: boolean;
 }) {
   const currentUser = useQuery(api.users.getCurrentUser);
   const setCommitteeRole = useMutation(api.members.mutations.setCommitteeRole);
   const [pending, setPending] = useState<RoleChoice | null>(null);
 
-  const currentChoice: RoleChoice = currentRole ?? (isAdmin ? "admin" : "none");
+  const currentChoice: RoleChoice = currentRole ?? "none";
 
   if (currentUser?.role !== "super_admin") {
     return (
@@ -92,7 +87,6 @@ export function CommitteeRoleSelect({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">{ROLE_LABEL.none}</SelectItem>
-            <SelectItem value="admin">{ROLE_LABEL.admin}</SelectItem>
             <SelectItem value="chairman">{ROLE_LABEL.chairman}</SelectItem>
             <SelectItem value="deputy_chairman">{ROLE_LABEL.deputy_chairman}</SelectItem>
             <SelectItem value="secretary">{ROLE_LABEL.secretary}</SelectItem>
