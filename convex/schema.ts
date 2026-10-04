@@ -544,6 +544,22 @@ export default defineSchema({
     relatedLoanId: v.id("loans"),
     processedBy: v.id("users"),
   }).index("by_fund", ["fundId"]).index("by_loan", ["relatedLoanId"]),
+  // The Sacco's real money in the bank and in M-Pesa. Not derived from member
+  // activity (loan cash and repayments never pass through member accounts) —
+  // the chairman records movements, and balance = sum of entries per channel.
+  treasuryEntries: defineTable({
+    channel: v.union(v.literal("bank"), v.literal("mpesa")),
+    // "in"/"out" carry a positive amount; "adjustment" is signed (a reset to
+    // the real statement figure).
+    kind: v.union(v.literal("in"), v.literal("out"), v.literal("adjustment")),
+    amount: v.float64(),
+    note: v.string(),
+    entryDate: v.string(),
+    recordedBy: v.id("users"),
+    // Set when posted automatically by a loan disbursement or repayment.
+    relatedLoanId: v.optional(v.id("loans")),
+  }).index("by_channel", ["channel"]),
+
   notifications: defineTable({
     recipientUserId: v.id("users"),
     title: v.string(),

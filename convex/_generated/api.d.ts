@@ -54,6 +54,9 @@ import type * as seed from "../seed.js";
 import type * as settings_definitions from "../settings/definitions.js";
 import type * as settings_mutations from "../settings/mutations.js";
 import type * as settings_queries from "../settings/queries.js";
+import type * as treasury_helpers from "../treasury/helpers.js";
+import type * as treasury_mutations from "../treasury/mutations.js";
+import type * as treasury_queries from "../treasury/queries.js";
 import type * as users from "../users.js";
 
 import type {
@@ -109,6 +112,9 @@ declare const fullApi: ApiFromModules<{
   "settings/definitions": typeof settings_definitions;
   "settings/mutations": typeof settings_mutations;
   "settings/queries": typeof settings_queries;
+  "treasury/helpers": typeof treasury_helpers;
+  "treasury/mutations": typeof treasury_mutations;
+  "treasury/queries": typeof treasury_queries;
   users: typeof users;
 }>;
 

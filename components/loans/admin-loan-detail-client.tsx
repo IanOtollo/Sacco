@@ -53,6 +53,9 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   const [defaultReason, setDefaultReason] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [disburseConfirm, setDisburseConfirm] = useState(false);
+  const [disburseSource, setDisburseSource] = useState<"bank" | "mpesa" | null>(null);
+  const [disbursing, setDisbursing] = useState(false);
+  const treasury = useQuery(api.treasury.queries.getBalances);
   const [approveConfirm, setApproveConfirm] = useState(false);
 
   const reject = useMutation(api.loans.mutations.reject);
@@ -95,8 +98,17 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
   }
 
   async function handleDisburse() {
-    await disburse({ loanId: loan!._id });
-    toast.success("Loan disbursed");
+    if (!disburseSource) return;
+    setDisbursing(true);
+    try {
+      await disburse({ loanId: loan!._id, source: disburseSource });
+      toast.success("Loan disbursed");
+      setDisburseConfirm(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not disburse loan");
+    } finally {
+      setDisbursing(false);
+    }
   }
 
   async function handleWriteOff() {
@@ -373,18 +385,51 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         </DialogContent>
       </Dialog>
 
-      <ConfirmModal
-        open={disburseConfirm}
-        onOpenChange={setDisburseConfirm}
-        title="Disburse this loan?"
-        description={
-          loan.member?.isNonMember
-            ? "This generates the repayment schedule immediately. Hand over the disbursed amount directly — there's no internal account to credit for a non-member."
-            : "This credits the member's savings account and generates the repayment schedule immediately."
-        }
-        confirmLabel="Disburse"
-        onConfirm={handleDisburse}
-      />
+      <Dialog open={disburseConfirm} onOpenChange={setDisburseConfirm}>
+        <DialogContent className="max-w-sm sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Disburse this loan?</DialogTitle>
+            <DialogDescription>
+              This generates the repayment schedule immediately. Hand the
+              borrower the money directly — it comes out of the Sacco&apos;s
+              bank or M-Pesa balance, never the member&apos;s savings or shares.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Where is the money coming from?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { value: "bank", label: "Bank", balance: treasury?.bank },
+                  { value: "mpesa", label: "M-Pesa", balance: treasury?.mpesa },
+                ] as const
+              ).map((o) => (
+                <Button
+                  key={o.value}
+                  type="button"
+                  variant={disburseSource === o.value ? "default" : "outline"}
+                  className="h-auto flex-col gap-0.5 py-2"
+                  onClick={() => setDisburseSource(o.value)}
+                >
+                  <span>{o.label}</span>
+                  {o.balance !== undefined && (
+                    <span className="text-xs font-normal opacity-80">
+                      KES {o.balance.toLocaleString()}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            disabled={!disburseSource || disbursing}
+            onClick={handleDisburse}
+          >
+            {disbursing ? "Disbursing…" : "Disburse"}
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmModal
         open={approveConfirm}
@@ -400,6 +445,7 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
         onOpenChange={setPayOpen}
         loanId={loan._id}
         monthlyRepayment={loan.monthlyRepayment}
+        askReceivedInto
       />
     </div>
 

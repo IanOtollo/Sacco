@@ -13,6 +13,7 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PaybillCard } from "@/components/shared/paybill-info";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
+import { TreasuryCards } from "@/components/dashboard/treasury-cards";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import {
   Wallet,
@@ -120,6 +121,8 @@ export function MemberDashboardClient() {
         </div>
         <PaybillCard title="Fund your account via M-Pesa" />
       </div>
+
+      <TreasuryCards />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Link href="/portal/accounts">

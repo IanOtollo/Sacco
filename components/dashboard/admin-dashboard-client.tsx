@@ -11,6 +11,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoansIssuedDialog } from "@/components/dashboard/loans-issued-dialog";
+import { TreasuryCards } from "@/components/dashboard/treasury-cards";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import {
   BarChart,
@@ -91,6 +92,8 @@ export function AdminDashboardClient() {
           Your Sacco at a glance.
         </p>
       </div>
+
+      <TreasuryCards />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard

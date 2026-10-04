@@ -36,19 +36,32 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
+type ReceivedInto = "mpesa" | "bank_transfer" | "cash";
+
+const RECEIVED_INTO_OPTIONS: { value: ReceivedInto; label: string }[] = [
+  { value: "mpesa", label: "M-Pesa" },
+  { value: "bank_transfer", label: "Bank" },
+  { value: "cash", label: "Cash" },
+];
+
 export function MakePaymentModal({
   open,
   onOpenChange,
   loanId,
   monthlyRepayment,
+  askReceivedInto = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loanId: Id<"loans">;
   monthlyRepayment: number;
+  // Admin-recorded repayments say where the money landed, so the Sacco's
+  // bank / M-Pesa balance goes up.
+  askReceivedInto?: boolean;
 }) {
   const repay = useMutation(api.loans.mutations.repay);
   const [pendingAmount, setPendingAmount] = useState<string | null>(null);
+  const [receivedInto, setReceivedInto] = useState<ReceivedInto | null>(null);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -58,9 +71,14 @@ export function MakePaymentModal({
   async function handleConfirm() {
     if (!pendingAmount) return;
     try {
-      await repay({ loanId, amount: Number(pendingAmount) });
+      await repay({
+        loanId,
+        amount: Number(pendingAmount),
+        ...(askReceivedInto && receivedInto ? { channel: receivedInto } : {}),
+      });
       toast.success("Repayment recorded");
       form.reset();
+      setReceivedInto(null);
       onOpenChange(false);
     } catch (error) {
       toast.error(
@@ -100,7 +118,29 @@ export function MakePaymentModal({
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
+              {askReceivedInto && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Money received into</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {RECEIVED_INTO_OPTIONS.map((o) => (
+                      <Button
+                        key={o.value}
+                        type="button"
+                        size="sm"
+                        variant={receivedInto === o.value ? "default" : "outline"}
+                        onClick={() => setReceivedInto(o.value)}
+                      >
+                        {o.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={askReceivedInto && !receivedInto}
+              >
                 Continue
               </Button>
             </form>
@@ -114,7 +154,13 @@ export function MakePaymentModal({
         title="Confirm repayment"
         description={
           pendingAmount
-            ? `This applies KES ${Number(pendingAmount).toLocaleString()} received to this loan. Savings are not debited. This cannot be undone.`
+            ? `This applies KES ${Number(pendingAmount).toLocaleString()} received to this loan${
+                receivedInto === "mpesa"
+                  ? " and adds it to the Sacco's M-Pesa balance"
+                  : receivedInto === "bank_transfer"
+                    ? " and adds it to the Sacco's bank balance"
+                    : ""
+              }. Savings are not debited. This cannot be undone.`
             : ""
         }
         confirmLabel="Confirm repayment"

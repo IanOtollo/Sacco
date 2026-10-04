@@ -10,6 +10,7 @@ import {
   resolveEmergencyLoanRate,
   resolveDevelopmentLoanRate,
 } from "./helpers";
+import { postLoanTreasuryEntry } from "../treasury/helpers";
 import { generateNonMemberNumber } from "../members/helpers";
 import { normalizeKenyanPhone } from "../../lib/phone";
 import { normalizeNationalId } from "../../lib/national-id";
@@ -393,8 +394,12 @@ export const reject = mutation({
 });
 
 export const disburse = mutation({
-  args: { loanId: v.id("loans") },
-  handler: async (ctx, { loanId }) => {
+  args: {
+    loanId: v.id("loans"),
+    // Where the cash came from — the Sacco's bank or M-Pesa balance goes down.
+    source: v.union(v.literal("bank"), v.literal("mpesa")),
+  },
+  handler: async (ctx, { loanId, source }) => {
     const admin = await requireAdmin(ctx);
     const loan = await ctx.db.get(loanId);
     if (!loan) throw new Error("Loan not found");
@@ -491,6 +496,18 @@ export const disburse = mutation({
     // deposits or withdraws — never as a side effect of borrowing.
 
     const member = await ctx.db.get(loan.memberId);
+
+    // The Sacco's own money goes down by what was handed over (net of the
+    // processing/insurance fees it keeps) — never the member's savings.
+    await postLoanTreasuryEntry(ctx, {
+      channel: source,
+      kind: "out",
+      amount: amountDisbursed,
+      note: `Loan ${loan.loanNumber} disbursed${member ? ` to ${member.firstName} ${member.lastName}`.trimEnd() : ""}`,
+      userId: admin._id,
+      loanId,
+    });
+
     if (member?.userId) {
       await notify(ctx, {
         recipientUserId: member.userId,
@@ -594,6 +611,23 @@ export const repay = mutation({
     });
 
     const member = await ctx.db.get(loan.memberId);
+
+    // An admin recording a repayment says where the money landed; M-Pesa or
+    // bank receipts increase that Sacco balance. Cash isn't tracked until it
+    // is banked (the chairman records that as "Money in").
+    const treasuryChannel =
+      channel === "mpesa" ? "mpesa" : channel === "bank_transfer" ? "bank" : null;
+    if (isAdmin && treasuryChannel) {
+      await postLoanTreasuryEntry(ctx, {
+        channel: treasuryChannel,
+        kind: "in",
+        amount,
+        note: `Repayment — ${loan.loanNumber}${member ? ` (${member.firstName} ${member.lastName})`.trimEnd() : ""}`,
+        userId: caller._id,
+        loanId,
+      });
+    }
+
     if (member?.userId) {
       await notify(ctx, {
         recipientUserId: member.userId,
