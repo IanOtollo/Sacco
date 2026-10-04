@@ -10,7 +10,6 @@ import {
   resolveEmergencyLoanRate,
   resolveDevelopmentLoanRate,
 } from "./helpers";
-import { generateReferenceNumber } from "../accounts/helpers";
 import { generateNonMemberNumber } from "../members/helpers";
 import { normalizeKenyanPhone } from "../../lib/phone";
 import { normalizeNationalId } from "../../lib/national-id";
@@ -225,19 +224,8 @@ export const apply = mutation({
       throw new Error("Members with a defaulted loan cannot apply for new loans");
     }
 
-    const savingsAccount = await ctx.db
-      .query("accounts")
-      .withIndex("by_member_type", (q) =>
-        q.eq("memberId", memberId).eq("type", "savings")
-      )
-      .first();
-    const savingsBalance = savingsAccount?.balance ?? 0;
-    const maxByRatio = savingsBalance * product.maxLoanToSavingsRatio;
-    if (args.principalAmount > maxByRatio) {
-      throw new Error(
-        `Amount exceeds ${product.maxLoanToSavingsRatio}x your savings balance (max KES ${maxByRatio.toLocaleString()})`
-      );
-    }
+    // Savings are not a loan limit or a prerequisite: a member with zero
+    // savings can still apply. Approval is a committee decision.
 
     if (args.guarantorMemberIds.includes(memberId)) {
       throw new Error("You cannot guarantee your own loan");
@@ -498,43 +486,16 @@ export const disburse = mutation({
       });
     }
 
-    // Non-member borrowers have no savings account to credit — they're
-    // handed the disbursed amount directly (cash/mpesa/bank), so there's
-    // nothing to post here beyond the loan record + audit log below.
-    const savingsAccount = await ctx.db
-      .query("accounts")
-      .withIndex("by_member_type", (q) =>
-        q.eq("memberId", loan.memberId).eq("type", "savings")
-      )
-      .first();
-
-    if (savingsAccount) {
-      const balanceBefore = savingsAccount.balance;
-      const balanceAfter = balanceBefore + amountDisbursed;
-      await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
-
-      await ctx.db.insert("transactions", {
-        accountId: savingsAccount._id,
-        memberId: loan.memberId,
-        type: "loan_disbursement",
-        amount: amountDisbursed,
-        balanceBefore,
-        balanceAfter,
-        description: `Loan disbursement — ${loan.loanNumber}`,
-        referenceNumber: generateReferenceNumber(),
-        relatedLoanId: loanId,
-        processedBy: admin._id,
-        channel: "system",
-        status: "completed",
-      });
-    }
+    // Loan proceeds are handed to the borrower directly (cash/mpesa/bank).
+    // A member's savings and share balances only change when the member
+    // deposits or withdraws — never as a side effect of borrowing.
 
     const member = await ctx.db.get(loan.memberId);
     if (member?.userId) {
       await notify(ctx, {
         recipientUserId: member.userId,
         title: "Loan disbursed",
-        message: `KES ${amountDisbursed.toLocaleString()} has been credited to your savings account.`,
+        message: `KES ${amountDisbursed.toLocaleString()} has been released to you. Your savings and shares are unchanged.`,
         type: "loan_update",
         relatedEntityType: "loan",
         relatedEntityId: loanId,
