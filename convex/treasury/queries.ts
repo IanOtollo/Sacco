@@ -25,7 +25,7 @@ export const getBalances = query({
       .slice(0, 40);
     const history = await Promise.all(
       recent.map(async (e) => {
-        const by = await ctx.db.get(e.recordedBy);
+        const by = e.recordedBy ? await ctx.db.get(e.recordedBy) : null;
         return {
           _id: e._id,
           channel: e.channel,
@@ -33,7 +33,8 @@ export const getBalances = query({
           amount: e.amount,
           note: e.note,
           entryDate: e.entryDate,
-          recordedByName: by?.name ?? "—",
+          recordedByName:
+            by?.name ?? (e.source === "mpesa_c2b" ? "M-Pesa (automatic)" : "—"),
           createdAt: e._creationTime,
         };
       })

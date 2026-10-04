@@ -42,6 +42,8 @@ import type * as members_mutations from "../members/mutations.js";
 import type * as members_queries from "../members/queries.js";
 import type * as membershipApplications_mutations from "../membershipApplications/mutations.js";
 import type * as membershipApplications_queries from "../membershipApplications/queries.js";
+import type * as mpesa_helpers from "../mpesa/helpers.js";
+import type * as mpesa_mutations from "../mpesa/mutations.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
@@ -100,6 +102,8 @@ declare const fullApi: ApiFromModules<{
   "members/queries": typeof members_queries;
   "membershipApplications/mutations": typeof membershipApplications_mutations;
   "membershipApplications/queries": typeof membershipApplications_queries;
+  "mpesa/helpers": typeof mpesa_helpers;
+  "mpesa/mutations": typeof mpesa_mutations;
   "notifications/helpers": typeof notifications_helpers;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;

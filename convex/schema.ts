@@ -203,6 +203,9 @@ export default defineSchema({
     reviewedBy: v.optional(v.id("users")),
     reviewedAt: v.optional(v.string()),
     rejectionReason: v.optional(v.string()),
+    // True when the claimed M-Pesa code matches a paybill payment Safaricom
+    // confirmed, for the same amount.
+    mpesaVerified: v.optional(v.boolean()),
   })
     .index("by_member", ["memberId"])
     .index("by_status", ["status"])
@@ -555,10 +558,26 @@ export default defineSchema({
     amount: v.float64(),
     note: v.string(),
     entryDate: v.string(),
-    recordedBy: v.id("users"),
+    // Absent for entries posted automatically from M-Pesa callbacks.
+    recordedBy: v.optional(v.id("users")),
+    source: v.optional(v.literal("mpesa_c2b")),
     // Set when posted automatically by a loan disbursement or repayment.
     relatedLoanId: v.optional(v.id("loans")),
   }).index("by_channel", ["channel"]),
+
+  // Every payment into the Sacco paybill, as confirmed by Safaricom (Daraja
+  // C2B). Kept even when it matches no member claim, so the money is never
+  // lost track of.
+  mpesaPayments: defineTable({
+    transId: v.string(),
+    paidAt: v.string(),
+    amount: v.float64(),
+    billRef: v.string(),
+    msisdn: v.optional(v.string()),
+    payerName: v.string(),
+    orgBalance: v.optional(v.float64()),
+    matchedClaimId: v.optional(v.id("depositClaims")),
+  }).index("by_transId", ["transId"]),
 
   notifications: defineTable({
     recipientUserId: v.id("users"),
