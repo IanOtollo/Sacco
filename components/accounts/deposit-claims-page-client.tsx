@@ -116,11 +116,6 @@ export function DepositClaimsPageClient() {
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
                     M-Pesa name: {claim.transactionReference}
                   </p>
-                  {claim.mpesaVerified && (
-                    <p className="mt-1 text-xs font-medium text-success">
-                      ✓ Verified — Safaricom confirmed this payment to the paybill
-                    </p>
-                  )}
                   {claim.note && (
                     <p className="mt-1 text-xs text-muted-foreground">
                       &ldquo;{claim.note}&rdquo;

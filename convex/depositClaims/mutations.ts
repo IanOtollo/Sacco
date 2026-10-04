@@ -4,7 +4,6 @@ import { requireMemberProfile, requireTreasurer } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { creditAccountBalance } from "../accounts/helpers";
-import { paymentMatchesClaim } from "../mpesa/helpers";
 
 const accountTypeValidator = v.union(
   v.literal("savings"),
@@ -70,19 +69,7 @@ export const submit = mutation({
     }
     await assertReferenceNotClaimed(ctx, transactionReference);
 
-    // If Safaricom already confirmed a paybill payment with this code and
-    // amount, the claim is verified automatically.
-    const unmatchedPayments = (await ctx.db.query("mpesaPayments").order("desc").take(300)).filter(
-      (p) =>
-        !p.matchedClaimId &&
-        paymentMatchesClaim(p, { transactionReference, amount: args.amount })
-    );
-    // Exactly one candidate, so a claim is never verified by the wrong payment.
-    const payment = unmatchedPayments.length === 1 ? unmatchedPayments[0] : undefined;
-    const mpesaVerified = !!payment;
-
     const claimId = await ctx.db.insert("depositClaims", {
-      mpesaVerified: mpesaVerified || undefined,
       memberId: caller.memberId!,
       accountType: args.accountType,
       amount: args.amount,
@@ -100,10 +87,6 @@ export const submit = mutation({
       entityId: claimId,
       details: { accountType: args.accountType, amount: args.amount },
     });
-
-    if (mpesaVerified && payment) {
-      await ctx.db.patch(payment._id, { matchedClaimId: claimId });
-    }
 
     const staff = await ctx.db.query("users").collect();
     for (const s of staff) {

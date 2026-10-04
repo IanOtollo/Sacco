@@ -11,7 +11,6 @@ import {
   resolveDevelopmentLoanRate,
 } from "./helpers";
 import { postLoanTreasuryEntry } from "../treasury/helpers";
-import { mpesaAutoTrackEnabled } from "../mpesa/mutations";
 import { generateNonMemberNumber } from "../members/helpers";
 import { normalizeKenyanPhone } from "../../lib/phone";
 import { normalizeNationalId } from "../../lib/national-id";
@@ -618,13 +617,7 @@ export const repay = mutation({
     // is banked (the chairman records that as "Money in").
     const treasuryChannel =
       channel === "mpesa" ? "mpesa" : channel === "bank_transfer" ? "bank" : null;
-    // With paybill callbacks live, M-Pesa receipts are added by the callback
-    // itself — adding them here too would count the money twice.
-    if (
-      isAdmin &&
-      treasuryChannel &&
-      !(treasuryChannel === "mpesa" && mpesaAutoTrackEnabled())
-    ) {
+    if (isAdmin && treasuryChannel) {
       await postLoanTreasuryEntry(ctx, {
         channel: treasuryChannel,
         kind: "in",
