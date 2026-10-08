@@ -118,7 +118,7 @@ function PopupCard({
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="fixed inset-0 isolate z-50 bg-black/40 backdrop-blur-xs duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-popover p-6 text-popover-foreground shadow-xl ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 sm:max-w-lg sm:p-8">
+        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-popover p-5 text-popover-foreground shadow-xl ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 sm:max-w-lg sm:p-8">
           <DialogPrimitive.Close
             aria-label="Close announcement"
             className="absolute top-3 right-3 flex size-12 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
@@ -144,7 +144,7 @@ function PopupCard({
             <X className="size-6" />
           </DialogPrimitive.Close>
 
-          <div className="flex items-center gap-3 pr-12">
+          <div className="flex shrink-0 items-center gap-3 pr-12">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Megaphone className="size-5" />
             </div>
@@ -155,13 +155,13 @@ function PopupCard({
             </span>
           </div>
 
-          <DialogPrimitive.Title className="mt-4 pr-12 font-heading text-xl font-bold leading-tight tracking-tight sm:text-2xl">
+          <DialogPrimitive.Title className="mt-4 shrink-0 break-words pr-12 font-heading text-xl font-bold leading-tight tracking-tight sm:text-2xl">
             {title}
           </DialogPrimitive.Title>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 shrink-0 text-xs text-muted-foreground">
             {formatDate(publishedAt)}
           </p>
-          <DialogPrimitive.Description className="mt-4 max-h-[50vh] overflow-y-auto whitespace-pre-wrap text-base leading-relaxed">
+          <DialogPrimitive.Description className="mt-4 min-h-0 flex-1 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words text-base leading-relaxed">
             {content}
           </DialogPrimitive.Description>
         </DialogPrimitive.Popup>
