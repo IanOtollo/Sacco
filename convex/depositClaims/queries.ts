@@ -8,8 +8,9 @@ export const listMine = query({
     const claims = await ctx.db
       .query("depositClaims")
       .withIndex("by_member", (q) => q.eq("memberId", caller.memberId!))
-      .collect();
-    return claims.sort((a, b) => b._creationTime - a._creationTime);
+      .order("desc")
+      .take(100);
+    return claims;
   },
 });
 
@@ -52,8 +53,8 @@ export const listAll = query({
   args: {},
   handler: async (ctx) => {
     await requireTreasurer(ctx);
-    const claims = await ctx.db.query("depositClaims").collect();
-    const sorted = claims.sort((a, b) => b._creationTime - a._creationTime);
+    // Newest 500 only, so the page stays fast as history accumulates.
+    const sorted = await ctx.db.query("depositClaims").order("desc").take(500);
 
     return await Promise.all(
       sorted.map(async (c) => {
