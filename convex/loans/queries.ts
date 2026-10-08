@@ -22,23 +22,34 @@ export const listAll = query({
   },
   handler: async (ctx, { status, startDate, endDate }) => {
     await requireTreasurer(ctx);
-    let loans = status
+    // Newest first, capped: the list page never reads more than 500 loans
+    // however many exist. Date filters narrow via the index range.
+    const start = startDate ? new Date(startDate).getTime() : undefined;
+    const end = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : undefined;
+    const loans = status
       ? await ctx.db
           .query("loans")
-          .withIndex("by_status", (q) => q.eq("status", status as never))
-          .collect()
-      : await ctx.db.query("loans").collect();
-
-    if (startDate) {
-      const start = new Date(startDate).getTime();
-      loans = loans.filter((l) => l._creationTime >= start);
-    }
-    if (endDate) {
-      const end = new Date(endDate).getTime() + 24 * 60 * 60 * 1000;
-      loans = loans.filter((l) => l._creationTime < end);
-    }
-
-    loans.sort((a, b) => b._creationTime - a._creationTime);
+          .withIndex("by_status", (q) => {
+            const base = q.eq("status", status as never);
+            if (start !== undefined && end !== undefined)
+              return base.gte("_creationTime", start).lt("_creationTime", end);
+            if (start !== undefined) return base.gte("_creationTime", start);
+            if (end !== undefined) return base.lt("_creationTime", end);
+            return base;
+          })
+          .order("desc")
+          .take(500)
+      : await ctx.db
+          .query("loans")
+          .withIndex("by_creation_time", (q) => {
+            if (start !== undefined && end !== undefined)
+              return q.gte("_creationTime", start).lt("_creationTime", end);
+            if (start !== undefined) return q.gte("_creationTime", start);
+            if (end !== undefined) return q.lt("_creationTime", end);
+            return q;
+          })
+          .order("desc")
+          .take(500);
 
     return await Promise.all(
       loans.map(async (loan) => {

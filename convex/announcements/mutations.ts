@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { requireSecretary } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
@@ -83,26 +84,12 @@ export const setPublished = mutation({
     });
 
     if (isPublished && !wasPublished) {
-      const users = await ctx.db.query("users").collect();
-      for (const u of users) {
-        const matchesAudience =
-          announcement.targetAudience === "all" ||
-          (announcement.targetAudience === "members" && u.role === "member") ||
-          (announcement.targetAudience === "admins" &&
-            (u.role === "admin" || u.role === "super_admin"));
-        if (!matchesAudience) continue;
-
-        await notify(ctx, {
-          recipientUserId: u._id,
-          title: announcement.title,
-          message: announcement.content.slice(0, 140),
-          type: "announcement",
-          relatedEntityType: "announcement",
-          relatedEntityId: announcementId,
-          actionUrl:
-            u.role === "member" ? "/portal/updates" : "/admin/announcements",
-        });
-      }
+      // Fan out in batches (see notifyBatch) so publishing stays fast and
+      // within mutation limits however many users there are.
+      await ctx.scheduler.runAfter(0, internal.announcements.mutations.notifyBatch, {
+        announcementId,
+        cursor: null,
+      });
     }
 
     await logAction(ctx, {
@@ -128,5 +115,48 @@ export const remove = mutation({
       entityId: announcementId,
       details: {},
     });
+  },
+});
+
+const NOTIFY_BATCH_SIZE = 200;
+
+export const notifyBatch = internalMutation({
+  args: {
+    announcementId: v.id("announcements"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx, { announcementId, cursor }) => {
+    const announcement = await ctx.db.get(announcementId);
+    if (!announcement || !announcement.isPublished) return;
+
+    const page = await ctx.db
+      .query("users")
+      .paginate({ numItems: NOTIFY_BATCH_SIZE, cursor });
+
+    for (const u of page.page) {
+      const matchesAudience =
+        announcement.targetAudience === "all" ||
+        (announcement.targetAudience === "members" && u.role === "member") ||
+        (announcement.targetAudience === "admins" &&
+          (u.role === "admin" || u.role === "super_admin"));
+      if (!matchesAudience) continue;
+
+      await notify(ctx, {
+        recipientUserId: u._id,
+        title: announcement.title,
+        message: announcement.content.slice(0, 140),
+        type: "announcement",
+        relatedEntityType: "announcement",
+        relatedEntityId: announcementId,
+        actionUrl: u.role === "member" ? "/portal/updates" : "/admin/announcements",
+      });
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.announcements.mutations.notifyBatch, {
+        announcementId,
+        cursor: page.continueCursor,
+      });
+    }
   },
 });
