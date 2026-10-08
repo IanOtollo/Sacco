@@ -4,6 +4,7 @@ import { requireTreasurer } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
+import { adjustPool } from "../accounts/pools";
 
 export const createType = mutation({
   args: {
@@ -86,6 +87,7 @@ export const record = mutation({
       const balanceBefore = savingsAccount.balance;
       const balanceAfter = balanceBefore + args.amount;
       await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+      await adjustPool(ctx, "savings", balanceAfter - balanceBefore);
 
       await ctx.db.insert("transactions", {
         accountId: savingsAccount._id,

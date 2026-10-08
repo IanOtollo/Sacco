@@ -23,4 +23,12 @@ crons.monthly(
   internal.members.crons.checkDormantAccounts
 );
 
+// Hourly self-check: recomputes the dashboard's balance totals from the
+// accounts themselves, so a missed update can never persist.
+crons.interval(
+  "reconcile-balance-pools",
+  { hours: 1 },
+  internal.accounts.pools.reconcilePools
+);
+
 export default crons;

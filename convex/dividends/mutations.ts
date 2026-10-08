@@ -4,6 +4,7 @@ import { requireTreasurer, requireMemberProfile } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "../accounts/helpers";
+import { adjustPool } from "../accounts/pools";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -127,6 +128,7 @@ export const distribute = mutation({
       const balanceBefore = savingsAccount.balance;
       const balanceAfter = round2(balanceBefore + payout.amount);
       await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+      await adjustPool(ctx, "savings", balanceAfter - balanceBefore);
 
       await ctx.db.insert("transactions", {
         accountId: savingsAccount._id,
@@ -206,6 +208,7 @@ export const redeem = mutation({
     const balanceBefore = savingsAccount.balance;
     const balanceAfter = round2(balanceBefore + payout.amount);
     await ctx.db.patch(savingsAccount._id, { balance: balanceAfter });
+    await adjustPool(ctx, "savings", balanceAfter - balanceBefore);
 
     await ctx.db.insert("transactions", {
       accountId: savingsAccount._id,

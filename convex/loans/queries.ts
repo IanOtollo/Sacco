@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import { query, QueryCtx } from "../_generated/server";
+import { Doc } from "../_generated/dataModel";
 import { requireMemberProfile, requireTreasurer, requireUser } from "../authz";
 
 export const countPendingApproval = query({
@@ -14,6 +16,49 @@ export const countPendingApproval = query({
   },
 });
 
+async function enrichLoans(ctx: QueryCtx, loans: Doc<"loans">[]) {
+  return await Promise.all(
+    loans.map(async (loan) => {
+      const [member, product, guarantors] = await Promise.all([
+        ctx.db.get(loan.memberId),
+        ctx.db.get(loan.productId),
+        ctx.db
+          .query("guarantors")
+          .withIndex("by_loan", (q) => q.eq("loanId", loan._id))
+          .collect(),
+      ]);
+      const referrer = member?.invitedBy ? await ctx.db.get(member.invitedBy) : null;
+      return {
+        ...loan,
+        referrerName: referrer ? `${referrer.firstName} ${referrer.lastName}` : null,
+        referrerPhone: referrer?.phoneNumber ?? null,
+        memberName: member ? `${member.firstName} ${member.lastName}` : "—",
+        isNonMember: member?.isNonMember ?? false,
+        committeeRole: member?.committeeRole,
+        productName: product?.name ?? "—",
+        guarantorsAccepted: guarantors.filter((g) => g.status === "accepted").length,
+        guarantorsTotal: guarantors.length,
+      };
+    })
+  );
+}
+
+// Paginated loans for the admin Loans page ("Load more").
+export const listPage = query({
+  args: { paginationOpts: paginationOptsValidator, status: v.optional(v.string()) },
+  handler: async (ctx, { paginationOpts, status }) => {
+    await requireTreasurer(ctx);
+    const result = status
+      ? await ctx.db
+          .query("loans")
+          .withIndex("by_status", (q) => q.eq("status", status as never))
+          .order("desc")
+          .paginate(paginationOpts)
+      : await ctx.db.query("loans").order("desc").paginate(paginationOpts);
+    return { ...result, page: await enrichLoans(ctx, result.page) };
+  },
+});
+
 export const listAll = query({
   args: {
     status: v.optional(v.string()),
@@ -22,8 +67,9 @@ export const listAll = query({
   },
   handler: async (ctx, { status, startDate, endDate }) => {
     await requireTreasurer(ctx);
-    // Newest first, capped: the list page never reads more than 500 loans
-    // however many exist. Date filters narrow via the index range.
+    // Complete results (reports and the issued-loans dialog must be exact),
+    // newest first, with date filters applied as an index range. The admin
+    // Loans page uses listPage instead, which is paginated.
     const start = startDate ? new Date(startDate).getTime() : undefined;
     const end = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : undefined;
     const loans = status
@@ -38,7 +84,7 @@ export const listAll = query({
             return base;
           })
           .order("desc")
-          .take(500)
+          .collect()
       : await ctx.db
           .query("loans")
           .withIndex("by_creation_time", (q) => {
@@ -49,32 +95,9 @@ export const listAll = query({
             return q;
           })
           .order("desc")
-          .take(500);
+          .collect();
 
-    return await Promise.all(
-      loans.map(async (loan) => {
-        const [member, product, guarantors] = await Promise.all([
-          ctx.db.get(loan.memberId),
-          ctx.db.get(loan.productId),
-          ctx.db
-            .query("guarantors")
-            .withIndex("by_loan", (q) => q.eq("loanId", loan._id))
-            .collect(),
-        ]);
-        const referrer = member?.invitedBy ? await ctx.db.get(member.invitedBy) : null;
-        return {
-          ...loan,
-          referrerName: referrer ? `${referrer.firstName} ${referrer.lastName}` : null,
-          referrerPhone: referrer?.phoneNumber ?? null,
-          memberName: member ? `${member.firstName} ${member.lastName}` : "â€”",
-          isNonMember: member?.isNonMember ?? false,
-          committeeRole: member?.committeeRole,
-          productName: product?.name ?? "â€”",
-          guarantorsAccepted: guarantors.filter((g) => g.status === "accepted").length,
-          guarantorsTotal: guarantors.length,
-        };
-      })
-    );
+    return await enrichLoans(ctx, loans);
   },
 });
 

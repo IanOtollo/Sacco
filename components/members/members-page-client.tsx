@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { MemberFolderGrid, type MemberSort } from "@/components/members/member-folder-grid";
 import { SearchInput } from "@/components/shared/search-input";
@@ -36,12 +37,32 @@ export function MembersPageClient() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<MemberSort>("newest");
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  const allMembers = useQuery(api.members.queries.list, {});
-  const totalMembers = allMembers?.length;
+  const [exporting, setExporting] = useState(false);
+  const convex = useConvex();
+  const totalMembers = useQuery(api.members.queries.countAll);
 
-  function handleExport() {
-    if (rows.length === 0) return;
+  // Export fetches the full matching roster on demand — the grid itself only
+  // holds the pages loaded so far.
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const rows = await convex.query(api.members.queries.list, {
+        search: search.trim() || undefined,
+        status: status === "all" ? undefined : status,
+      });
+      if (rows.length === 0) {
+        toast.info("No members to export");
+        return;
+      }
+      exportRows(rows);
+    } catch {
+      toast.error("Could not export members");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function exportRows(rows: Array<Record<string, unknown>>) {
     downloadCsv(
       "members.csv",
       [
@@ -79,7 +100,7 @@ export function MembersPageClient() {
             .
           </p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={rows.length === 0}>
+        <Button variant="outline" onClick={handleExport} disabled={exporting}>
           <Download className="size-4" />
           Export CSV
         </Button>
@@ -134,7 +155,6 @@ export function MembersPageClient() {
           search={search}
           status={status === "all" ? undefined : status}
           sort={sort}
-          onLoaded={setRows}
         />
       </div>
     </div>

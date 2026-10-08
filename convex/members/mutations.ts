@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation, mutation } from "../_generated/server";
 import { generateMemberNumber } from "./helpers";
+import { memberSearchText } from "./search";
 import { requireAdmin, requireSuperAdmin, requireUser } from "../authz";
 import { logAction } from "../audit";
 import { Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 
 const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
@@ -85,11 +87,16 @@ export const createMemberRecord = internalMutation({
       await ctx.db.patch(memberId, {
         ...memberFields,
         memberNumber,
+        searchText: memberSearchText({ ...memberFields, memberNumber }),
         isNonMember: undefined,
       });
     } else {
       memberNumber = await generateMemberNumber(ctx);
-      memberId = await ctx.db.insert("members", { ...memberFields, memberNumber });
+      memberId = await ctx.db.insert("members", {
+        ...memberFields,
+        memberNumber,
+        searchText: memberSearchText({ ...memberFields, memberNumber }),
+      });
     }
 
     await ctx.db.patch(args.userId, { memberId });
@@ -225,7 +232,16 @@ export const update = mutation({
       }
     }
 
-    await ctx.db.patch(memberId, patch);
+    const nameChanged =
+      patch.firstName !== undefined ||
+      patch.lastName !== undefined ||
+      patch.middleName !== undefined;
+    await ctx.db.patch(memberId, {
+      ...patch,
+      ...(nameChanged && !member.isNonMember
+        ? { searchText: memberSearchText({ ...member, ...patch }) }
+        : {}),
+    });
 
     await logAction(ctx, {
       userId: caller._id,
@@ -303,5 +319,25 @@ export const setCommitteeRole = mutation({
       entityId: memberId,
       details: { committeeRole: committeeRole ?? null },
     });
+  },
+});
+
+// One-off (and safe to re-run): fills searchText on members created before
+// the search index existed. Run with:
+//   npx convex run members/mutations:backfillSearchText
+export const backfillSearchText = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("members").paginate({ numItems: 200, cursor: cursor ?? null });
+    for (const m of page.page) {
+      if (m.isNonMember) continue;
+      const searchText = memberSearchText(m);
+      if (m.searchText !== searchText) await ctx.db.patch(m._id, { searchText });
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.members.mutations.backfillSearchText, {
+        cursor: page.continueCursor,
+      });
+    }
   },
 });

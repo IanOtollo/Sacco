@@ -143,8 +143,17 @@ export default defineSchema({
     // this member's registration fee, and 25% of every loan repayment this
     // member later makes.
     invitedBy: v.optional(v.id("members")),
+    // Denormalised name/number/phone/ID text for the search index. Kept in
+    // sync by createMemberRecord and update; absent on non-member borrowers
+    // so they never appear in membership searches.
+    searchText: v.optional(v.string()),
   })
     .index("by_memberNumber", ["memberNumber"])
+    .index("by_name", ["firstName", "lastName"])
+    .searchIndex("search_members", {
+      searchField: "searchText",
+      filterFields: ["status"],
+    })
     .index("by_nationalId", ["nationalId"])
     .index("by_phone", ["phoneNumber"])
     .index("by_email", ["email"])
@@ -539,6 +548,15 @@ export default defineSchema({
 
   // ─── NOTIFICATIONS ────────────────────────────────
   // SACCO-owned funds are distinct from individual member accounts.
+  // Running totals of member balances by account type � see accounts/pools.ts.
+  poolTotals: defineTable({
+    key: v.string(),
+    savings: v.number(),
+    sharesLongTerm: v.number(),
+    sharesShortTerm: v.number(),
+    sharesCapital: v.number(),
+  }).index("by_key", ["key"]),
+
   saccoFunds: defineTable({
     key: v.literal("long_term_shares"),
     balance: v.float64(),

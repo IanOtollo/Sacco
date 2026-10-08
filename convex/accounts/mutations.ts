@@ -4,6 +4,7 @@ import { requireAdmin } from "../authz";
 import { logAction } from "../audit";
 import { notify } from "../notifications/helpers";
 import { generateReferenceNumber } from "./helpers";
+import { adjustPool } from "./pools";
 
 const channelValidator = v.union(
   v.literal("cash"),
@@ -57,6 +58,7 @@ export const deposit = mutation({
     const balanceAfter = balanceBefore + args.amount;
 
     await ctx.db.patch(account._id, { balance: balanceAfter });
+    await adjustPool(ctx, args.type, balanceAfter - balanceBefore);
 
     const isShares = args.type !== "savings";
     const label = ACCOUNT_TYPE_LABEL[args.type];
@@ -140,6 +142,7 @@ export const withdraw = mutation({
     }
 
     await ctx.db.patch(account._id, { balance: balanceAfter });
+    await adjustPool(ctx, args.type, balanceAfter - balanceBefore);
 
     const isShares = args.type !== "savings";
     const label = ACCOUNT_TYPE_LABEL[args.type];

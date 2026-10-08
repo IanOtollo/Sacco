@@ -55,10 +55,15 @@ export const getAdminDashboard = query({
     yearAgo.setDate(1);
     yearAgo.setHours(0, 0, 0, 0);
 
-    const [members, accounts, loans, transactions, recentTxns, unsettled, saccoFunds] =
+    const [members, poolRow, loans, transactions, recentTxns, unsettled, saccoFunds] =
       await Promise.all([
         ctx.db.query("members").collect(),
-        ctx.db.query("accounts").collect(),
+        // Pool totals come from a running-total row (see accounts/pools.ts);
+        // only if it hasn't been created yet do we sum the accounts directly.
+        ctx.db
+          .query("poolTotals")
+          .withIndex("by_key", (q) => q.eq("key", "main"))
+          .first(),
         ctx.db.query("loans").collect(),
         ctx.db
           .query("transactions")
@@ -80,21 +85,25 @@ export const getAdminDashboard = query({
     const activeMembers = members.filter(
       (m) => m.status === "active" && !m.isNonMember
     ).length;
-    const savingsPool = accounts
-      .filter((a) => a.type === "savings")
-      .reduce((s, a) => s + a.balance, 0);
-    const sharesLongTermPool = accounts
-      .filter((a) => a.type === "shares_long_term")
-      .reduce((s, a) => s + a.balance, 0);
+    let pools = poolRow;
+    if (!pools) {
+      const accounts = await ctx.db.query("accounts").collect();
+      const sum = (type: string) =>
+        accounts.filter((a) => a.type === type).reduce((t, a) => t + a.balance, 0);
+      pools = {
+        savings: sum("savings"),
+        sharesLongTerm: sum("shares_long_term"),
+        sharesShortTerm: sum("shares_short_term"),
+        sharesCapital: sum("shares_capital"),
+      } as NonNullable<typeof poolRow>;
+    }
+    const savingsPool = pools.savings;
+    const sharesLongTermPool = pools.sharesLongTerm;
     const saccoLongTermSharesFund = saccoFunds.find(
       (fund) => fund.key === "long_term_shares"
     )?.balance ?? 0;
-    const sharesShortTermPool = accounts
-      .filter((a) => a.type === "shares_short_term")
-      .reduce((s, a) => s + a.balance, 0);
-    const sharesCapitalPool = accounts
-      .filter((a) => a.type === "shares_capital")
-      .reduce((s, a) => s + a.balance, 0);
+    const sharesShortTermPool = pools.sharesShortTerm;
+    const sharesCapitalPool = pools.sharesCapital;
     const sharesPool = sharesLongTermPool + sharesShortTermPool + sharesCapitalPool;
 
     const activeLoans = loans.filter((l) =>

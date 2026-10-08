@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
+import { LoadMore } from "@/components/shared/load-more";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
@@ -51,16 +52,26 @@ function DetailsCell({ details }: { details: string }) {
   );
 }
 
+const PAGE_SIZE = 50;
+
 export function AuditPageClient() {
   const [action, setAction] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const entries = useQuery(api.audit.queries.list, {
-    action: action || undefined,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
-  });
+  const {
+    results: entries,
+    status: pageStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.audit.queries.list,
+    {
+      action: action || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    },
+    { initialNumItems: PAGE_SIZE }
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -93,7 +104,7 @@ export function AuditPageClient() {
       </div>
 
       <div className="mt-6">
-        {entries === undefined ? (
+        {pageStatus === "LoadingFirstPage" ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full rounded-lg" />
@@ -136,6 +147,7 @@ export function AuditPageClient() {
             </Table>
           </div>
         )}
+        <LoadMore status={pageStatus} onLoadMore={loadMore} pageSize={PAGE_SIZE} />
       </div>
     </div>
   );

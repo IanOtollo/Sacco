@@ -10,6 +10,7 @@
 
 import type * as accounts_helpers from "../accounts/helpers.js";
 import type * as accounts_mutations from "../accounts/mutations.js";
+import type * as accounts_pools from "../accounts/pools.js";
 import type * as accounts_queries from "../accounts/queries.js";
 import type * as announcements_mutations from "../announcements/mutations.js";
 import type * as announcements_queries from "../announcements/queries.js";
@@ -40,6 +41,7 @@ import type * as members_crons from "../members/crons.js";
 import type * as members_helpers from "../members/helpers.js";
 import type * as members_mutations from "../members/mutations.js";
 import type * as members_queries from "../members/queries.js";
+import type * as members_search from "../members/search.js";
 import type * as membershipApplications_mutations from "../membershipApplications/mutations.js";
 import type * as membershipApplications_queries from "../membershipApplications/queries.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
@@ -68,6 +70,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "accounts/helpers": typeof accounts_helpers;
   "accounts/mutations": typeof accounts_mutations;
+  "accounts/pools": typeof accounts_pools;
   "accounts/queries": typeof accounts_queries;
   "announcements/mutations": typeof announcements_mutations;
   "announcements/queries": typeof announcements_queries;
@@ -98,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   "members/helpers": typeof members_helpers;
   "members/mutations": typeof members_mutations;
   "members/queries": typeof members_queries;
+  "members/search": typeof members_search;
   "membershipApplications/mutations": typeof membershipApplications_mutations;
   "membershipApplications/queries": typeof membershipApplications_queries;
   "notifications/helpers": typeof notifications_helpers;

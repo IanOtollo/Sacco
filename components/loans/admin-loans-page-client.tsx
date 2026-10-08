@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/utils";
 import { HandCoins } from "lucide-react";
 import { IssueNonMemberLoanDialog } from "@/components/loans/issue-non-member-loan-dialog";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { LoadMore } from "@/components/shared/load-more";
 
 const TABS = [
   { value: "all", label: "All" },
@@ -34,11 +35,17 @@ const TABS = [
   { value: "defaulted", label: "Defaulted" },
 ] as const;
 
+const PAGE_SIZE = 25;
+
 function LoansTable({ status }: { status?: string }) {
   const router = useRouter();
-  const loans = useQuery(api.loans.queries.listAll, { status });
+  const {
+    results: loans,
+    status: pageStatus,
+    loadMore,
+  } = usePaginatedQuery(api.loans.queries.listPage, { status }, { initialNumItems: PAGE_SIZE });
 
-  if (loans === undefined) {
+  if (pageStatus === "LoadingFirstPage") {
     return (
       <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -59,6 +66,7 @@ function LoansTable({ status }: { status?: string }) {
   }
 
   return (
+    <>
     <div className="overflow-x-auto rounded-xl border border-border">
       <Table>
         <TableHeader>
@@ -133,6 +141,8 @@ function LoansTable({ status }: { status?: string }) {
         </TableBody>
       </Table>
     </div>
+    <LoadMore status={pageStatus} onLoadMore={loadMore} pageSize={PAGE_SIZE} />
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { adjustPool } from "./pools";
 
 export function generateReferenceNumber(): string {
   const today = new Date();
@@ -42,6 +43,7 @@ export async function creditAccountBalance(
   const balanceBefore = account.balance;
   const balanceAfter = balanceBefore + args.amount;
   await ctx.db.patch(account._id, { balance: balanceAfter });
+  await adjustPool(ctx, args.type, balanceAfter - balanceBefore);
 
   const isShares = args.type !== "savings";
   const label = ACCOUNT_TYPE_LABEL[args.type];

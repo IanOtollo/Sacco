@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,11 +11,14 @@ import { CurrencyDisplay } from "@/components/shared/currency-display";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { LoadMore } from "@/components/shared/load-more";
 import { FolderOpen, Users } from "lucide-react";
 
 function initials(first: string, last: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
+
+const PAGE_SIZE = 24;
 
 export type MemberSort = "newest" | "name";
 
@@ -30,31 +33,23 @@ export function MemberFolderGrid({
   sort: MemberSort;
   onLoaded?: (rows: Array<Record<string, unknown>>) => void;
 }) {
-  const members = useQuery(api.members.queries.list, { search, status });
-
-  // Memoized so this only produces a new array reference when the actual
-  // data or sort order changes — not on every render. Without this, the
-  // effect below (which reports rows up to the parent) would re-fire every
-  // render and loop forever, since a fresh sort([...members]) is a new
-  // reference each time even when nothing changed.
-  const sorted = useMemo(
-    () =>
-      members
-        ? [...members].sort((a, b) =>
-            sort === "name"
-              ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
-              : b._creationTime - a._creationTime
-          )
-        : undefined,
-    [members, sort]
+  const {
+    results: members,
+    status: pageStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.members.queries.listPage,
+    { search, status, sort },
+    { initialNumItems: PAGE_SIZE }
   );
 
+  // Report loaded rows up for CSV export (the page holds what's been loaded).
   useEffect(() => {
-    if (sorted) onLoaded?.(sorted);
+    if (pageStatus !== "LoadingFirstPage") onLoaded?.(members);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sorted]);
+  }, [members, pageStatus]);
 
-  if (members === undefined) {
+  if (pageStatus === "LoadingFirstPage") {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -75,8 +70,9 @@ export function MemberFolderGrid({
   }
 
   return (
+    <>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {(sorted ?? []).map((m) => (
+      {members.map((m) => (
         <Link key={m._id} href={`/admin/members/${m._id}`}>
           <Card className="h-full rounded-2xl border-border/50 p-6 transition-shadow hover:shadow-lg">
             <div className="flex items-start justify-between">
@@ -124,5 +120,7 @@ export function MemberFolderGrid({
         </Link>
       ))}
     </div>
+    <LoadMore status={pageStatus} onLoadMore={loadMore} pageSize={PAGE_SIZE} />
+    </>
   );
 }
