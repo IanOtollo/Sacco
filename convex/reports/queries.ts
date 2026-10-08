@@ -1,42 +1,33 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { query, QueryCtx } from "../_generated/server";
 import { requireAdmin, requireTreasurer, requireUser } from "../authz";
+
+async function computeLandingStats(ctx: { db: QueryCtx["db"] }) {
+  const [members, savingsAccounts, loans] = await Promise.all([
+    ctx.db
+      .query("members")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect(),
+    ctx.db
+      .query("accounts")
+      .withIndex("by_member_type")
+      .filter((q) => q.eq(q.field("type"), "savings"))
+      .collect(),
+    ctx.db.query("loans").collect(),
+  ]);
+  const totalSavings = savingsAccounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalLoansDisbursed = loans
+    .filter((loan) =>
+      ["disbursed", "active", "fully_paid", "defaulted", "written_off"].includes(loan.status)
+    )
+    .reduce((sum, loan) => sum + loan.amountDisbursed, 0);
+  return { totalMembers: members.length, totalSavings, totalLoansDisbursed };
+}
 
 // Public, non-sensitive aggregate stats shown on the landing page.
 export const getLandingStats = query({
   args: {},
-  handler: async (ctx) => {
-    const [members, savingsAccounts, disbursedLoans] = await Promise.all([
-      ctx.db
-        .query("members")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect(),
-      ctx.db
-        .query("accounts")
-        .withIndex("by_member_type")
-        .filter((q) => q.eq(q.field("type"), "savings"))
-        .collect(),
-      ctx.db.query("loans").collect(),
-    ]);
-
-    const totalSavings = savingsAccounts.reduce(
-      (sum, account) => sum + account.balance,
-      0
-    );
-    const totalLoansDisbursed = disbursedLoans
-      .filter((loan) =>
-        ["disbursed", "active", "fully_paid", "defaulted", "written_off"].includes(
-          loan.status
-        )
-      )
-      .reduce((sum, loan) => sum + loan.amountDisbursed, 0);
-
-    return {
-      totalMembers: members.length,
-      totalSavings,
-      totalLoansDisbursed,
-    };
-  },
+  handler: async (ctx) => computeLandingStats(ctx),
 });
 
 const COLLECTION_TYPES = new Set(["deposit", "share_purchase", "loan_repayment"]);
@@ -56,14 +47,35 @@ export const getAdminDashboard = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const [members, accounts, loans, transactions, schedule, saccoFunds] = await Promise.all([
-      ctx.db.query("members").collect(),
-      ctx.db.query("accounts").collect(),
-      ctx.db.query("loans").collect(),
-      ctx.db.query("transactions").collect(),
-      ctx.db.query("loanSchedule").collect(),
-      ctx.db.query("saccoFunds").collect(),
-    ]);
+    // Transactions: only the trailing 12 months (all the charts use) plus the
+    // 10 newest — never the whole ledger. Schedule: only installments that
+    // aren't settled, via the status index, instead of every installment ever.
+    const yearAgo = new Date();
+    yearAgo.setMonth(yearAgo.getMonth() - 12);
+    yearAgo.setDate(1);
+    yearAgo.setHours(0, 0, 0, 0);
+
+    const [members, accounts, loans, transactions, recentTxns, unsettled, saccoFunds] =
+      await Promise.all([
+        ctx.db.query("members").collect(),
+        ctx.db.query("accounts").collect(),
+        ctx.db.query("loans").collect(),
+        ctx.db
+          .query("transactions")
+          .withIndex("by_creation_time", (q) => q.gte("_creationTime", yearAgo.getTime()))
+          .collect(),
+        ctx.db.query("transactions").order("desc").take(10),
+        Promise.all(
+          (["upcoming", "partial", "overdue"] as const).map((st) =>
+            ctx.db
+              .query("loanSchedule")
+              .withIndex("by_status", (q) => q.eq("status", st))
+              .collect()
+          )
+        ),
+        ctx.db.query("saccoFunds").collect(),
+      ]);
+    const schedule = unsettled.flat();
 
     const activeMembers = members.filter(
       (m) => m.status === "active" && !m.isNonMember
@@ -167,9 +179,7 @@ export const getAdminDashboard = query({
       count,
     }));
 
-    const recentTransactions = [...transactions]
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .slice(0, 10);
+    const recentTransactions = recentTxns;
     const memberById = new Map(members.map((m) => [m._id, m]));
     const recentActivity = recentTransactions.map((t) => ({
       _id: t._id,

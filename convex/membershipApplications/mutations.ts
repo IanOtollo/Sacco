@@ -9,6 +9,9 @@ import { notify } from "../notifications/helpers";
 import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 
+// Applications accepted across the whole site per rolling hour.
+const MAX_APPLICATIONS_PER_HOUR = 40;
+
 const genderValidator = v.union(v.literal("male"), v.literal("female"));
 
 // Public — reachable from the logged-out "Sign up" tab on the landing page.
@@ -64,6 +67,17 @@ export const submit = action({
       if (!value.trim()) throw new Error(`Please provide your ${label}.`);
     }
     const nextOfKinPhone = normalizeKenyanPhone(args.nextOfKinPhone);
+
+    // Public endpoint: cap how many applications can land per hour so a bot
+    // can't flood the admin queue or create unlimited accounts. (Login
+    // attempts are already throttled by Convex Auth's authRateLimits.)
+    const recentCount = await ctx.runQuery(
+      internal.membershipApplications.mutations.countRecentApplications,
+      {}
+    );
+    if (recentCount >= MAX_APPLICATIONS_PER_HOUR) {
+      throw new Error("We're receiving a lot of applications right now. Please try again later.");
+    }
 
     const duplicate = await ctx.runQuery(
       internal.membershipApplications.mutations.findDuplicate,
@@ -135,6 +149,18 @@ export const submit = action({
     });
 
     return { ok: true };
+  },
+});
+
+export const countRecentApplications = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<number> => {
+    const since = Date.now() - 60 * 60 * 1000;
+    const recent = await ctx.db
+      .query("membershipApplications")
+      .withIndex("by_creation_time", (q) => q.gte("_creationTime", since))
+      .take(MAX_APPLICATIONS_PER_HOUR + 1);
+    return recent.length;
   },
 });
 
