@@ -221,6 +221,17 @@ export default defineSchema({
     phoneNumber: v.string(),
     gender: v.union(v.literal("male"), v.literal("female")),
     registrationNumber: v.string(),
+    // Required on new sign-ups, optional here so applications submitted
+    // before these were collected still load. Copied onto the member on approval.
+    email: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    occupation: v.optional(v.string()),
+    employer: v.optional(v.string()),
+    postalAddress: v.optional(v.string()),
+    residentialAddress: v.optional(v.string()),
+    nextOfKinName: v.optional(v.string()),
+    nextOfKinPhone: v.optional(v.string()),
+    nextOfKinRelationship: v.optional(v.string()),
     // Existing member the applicant named as their invitor, picked from a
     // search on the sign-up form. Copied onto members.invitedBy on approval.
     invitorMemberId: v.optional(v.id("members")),

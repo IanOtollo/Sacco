@@ -185,6 +185,26 @@ export function AdminLoanDetailClient({ loanId }: { loanId: string }) {
           {loan.purpose}
         </p>
 
+        <p className="mt-2 text-sm">
+          <span className="text-muted-foreground">Referred by: </span>
+          {loan.referrer ? (
+            <>
+              <Link
+                href={`/admin/members/${loan.referrer._id}`}
+                className="font-medium text-primary hover:underline"
+              >
+                {loan.referrer.name} ({loan.referrer.memberNumber})
+              </Link>
+              {" · "}
+              <a href={`tel:${loan.referrer.phoneNumber}`} className="hover:underline">
+                {loan.referrer.phoneNumber}
+              </a>
+            </>
+          ) : (
+            "None"
+          )}
+        </p>
+
         <div className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
             <p className="text-muted-foreground">Principal</p>

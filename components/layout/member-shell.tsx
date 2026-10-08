@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { MemberSidebar } from "@/components/layout/member-sidebar";
 import { MemberTopbar } from "@/components/layout/member-topbar";
 import { MemberBottomBar } from "@/components/layout/member-bottom-bar";
+import { AnnouncementPopup } from "@/components/announcements/announcement-popup";
 
 export function MemberShell({ children }: { children: React.ReactNode }) {
   const user = useQuery(api.users.getCurrentUser);
@@ -17,6 +18,7 @@ export function MemberShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 pb-20 lg:pb-0 print:pb-0">{children}</main>
       </div>
       <MemberBottomBar />
+      <AnnouncementPopup />
     </div>
   );
 }

@@ -23,6 +23,15 @@ export const submit = action({
     phoneNumber: v.string(),
     gender: genderValidator,
     registrationNumber: v.string(),
+    email: v.string(),
+    dateOfBirth: v.string(),
+    occupation: v.optional(v.string()),
+    employer: v.string(),
+    postalAddress: v.string(),
+    residentialAddress: v.string(),
+    nextOfKinName: v.string(),
+    nextOfKinPhone: v.string(),
+    nextOfKinRelationship: v.string(),
     password: v.string(),
     // Existing member the applicant credits with inviting them, picked from
     // the search box on the sign-up form. Optional — not everyone was
@@ -40,6 +49,21 @@ export const submit = action({
 
     const nationalId = normalizeNationalId(args.nationalId);
     const phone = normalizeKenyanPhone(args.phoneNumber);
+
+    const required = {
+      email: args.email,
+      "date of birth": args.dateOfBirth,
+      employer: args.employer,
+      "postal address": args.postalAddress,
+      "residential address": args.residentialAddress,
+      "next of kin name": args.nextOfKinName,
+      "next of kin phone": args.nextOfKinPhone,
+      "next of kin relationship": args.nextOfKinRelationship,
+    };
+    for (const [label, value] of Object.entries(required)) {
+      if (!value.trim()) throw new Error(`Please provide your ${label}.`);
+    }
+    const nextOfKinPhone = normalizeKenyanPhone(args.nextOfKinPhone);
 
     const duplicate = await ctx.runQuery(
       internal.membershipApplications.mutations.findDuplicate,
@@ -98,6 +122,15 @@ export const submit = action({
       phoneNumber: phone,
       gender: args.gender,
       registrationNumber: args.registrationNumber,
+      email: args.email.trim(),
+      dateOfBirth: args.dateOfBirth,
+      occupation: args.occupation?.trim() || undefined,
+      employer: args.employer.trim(),
+      postalAddress: args.postalAddress.trim(),
+      residentialAddress: args.residentialAddress.trim(),
+      nextOfKinName: args.nextOfKinName.trim(),
+      nextOfKinPhone,
+      nextOfKinRelationship: args.nextOfKinRelationship.trim(),
       invitorMemberId: args.invitorMemberId,
     });
 
@@ -181,6 +214,15 @@ export const recordApplication = internalMutation({
     phoneNumber: v.string(),
     gender: genderValidator,
     registrationNumber: v.string(),
+    email: v.string(),
+    dateOfBirth: v.string(),
+    occupation: v.optional(v.string()),
+    employer: v.string(),
+    postalAddress: v.string(),
+    residentialAddress: v.string(),
+    nextOfKinName: v.string(),
+    nextOfKinPhone: v.string(),
+    nextOfKinRelationship: v.string(),
     invitorMemberId: v.optional(v.id("members")),
   },
   handler: async (ctx, args) => {
@@ -280,6 +322,15 @@ export const approve = mutation({
       nationalId: application.nationalId,
       phoneNumber: application.phoneNumber,
       gender: application.gender,
+      email: application.email,
+      dateOfBirth: application.dateOfBirth,
+      occupation: application.occupation,
+      employer: application.employer,
+      postalAddress: application.postalAddress,
+      residentialAddress: application.residentialAddress,
+      nextOfKinName: application.nextOfKinName,
+      nextOfKinPhone: application.nextOfKinPhone,
+      nextOfKinRelationship: application.nextOfKinRelationship,
       userId: application.userId,
       registeredBy: admin._id,
       invitedBy: invitor?._id,

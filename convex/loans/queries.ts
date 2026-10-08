@@ -50,8 +50,11 @@ export const listAll = query({
             .withIndex("by_loan", (q) => q.eq("loanId", loan._id))
             .collect(),
         ]);
+        const referrer = member?.invitedBy ? await ctx.db.get(member.invitedBy) : null;
         return {
           ...loan,
+          referrerName: referrer ? `${referrer.firstName} ${referrer.lastName}` : null,
+          referrerPhone: referrer?.phoneNumber ?? null,
           memberName: member ? `${member.firstName} ${member.lastName}` : "—",
           isNonMember: member?.isNonMember ?? false,
           committeeRole: member?.committeeRole,
@@ -99,7 +102,8 @@ export const getById = query({
   handler: async (ctx, { loanId }) => {
     const loan = await ctx.db.get(loanId);
     if (!loan) return null;
-    await assertCanViewLoan(ctx, loan.memberId);
+    const caller = await assertCanViewLoan(ctx, loan.memberId);
+    const isAdmin = caller.role === "admin" || caller.role === "super_admin";
 
     const [member, product, guarantors, schedule] = await Promise.all([
       ctx.db.get(loan.memberId),
@@ -128,8 +132,22 @@ export const getById = query({
 
     schedule.sort((a, b) => Number(a.installmentNumber) - Number(b.installmentNumber));
 
+    // Referral (the member who invited the borrower) — admins only, since it
+    // exposes that member's phone number.
+    const referrerMember =
+      isAdmin && member?.invitedBy ? await ctx.db.get(member.invitedBy) : null;
+    const referrer = referrerMember
+      ? {
+          _id: referrerMember._id,
+          name: `${referrerMember.firstName} ${referrerMember.lastName}`,
+          phoneNumber: referrerMember.phoneNumber,
+          memberNumber: referrerMember.memberNumber,
+        }
+      : null;
+
     return {
       ...loan,
+      referrer,
       member,
       product,
       guarantors: guarantorsWithNames,

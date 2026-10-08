@@ -64,3 +64,7 @@ export const LOAN_STATUS_LABEL: Record<string, string> = {
   defaulted: "Defaulted",
   written_off: "Written Off",
 };
+
+// Announcements published before this moment never trigger the member popup —
+// it only applies to announcements from the day the feature shipped onwards.
+export const ANNOUNCEMENT_POPUP_START = "2026-10-08T20:00:00.000Z";

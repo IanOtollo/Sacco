@@ -22,15 +22,15 @@ import {
 import { Loader2 } from "lucide-react";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
-  dateOfBirth: z.string().optional(),
+  email: z.string().min(1, "Required").email("Enter a valid email"),
+  dateOfBirth: z.string().min(1, "Required"),
   occupation: z.string().optional(),
-  employer: z.string().optional(),
-  postalAddress: z.string().optional(),
-  residentialAddress: z.string().optional(),
-  nextOfKinName: z.string().optional(),
-  nextOfKinPhone: z.string().optional(),
-  nextOfKinRelationship: z.string().optional(),
+  employer: z.string().min(1, "Required"),
+  postalAddress: z.string().min(1, "Required"),
+  residentialAddress: z.string().min(1, "Required"),
+  nextOfKinName: z.string().min(1, "Required"),
+  nextOfKinPhone: z.string().min(1, "Required"),
+  nextOfKinRelationship: z.string().min(1, "Required"),
 });
 
 type Values = z.infer<typeof schema>;
@@ -70,7 +70,7 @@ export function EditProfileForm({
     try {
       await update({
         memberId,
-        patch: { ...values, email: values.email || undefined },
+        patch: values,
       });
       toast.success("Profile updated");
     } catch (error) {
@@ -91,7 +91,7 @@ export function EditProfileForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email (optional)</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input type="email" disabled={submitting} {...field} />
                 </FormControl>
@@ -104,7 +104,7 @@ export function EditProfileForm({
             name="dateOfBirth"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Date of birth (optional)</FormLabel>
+                <FormLabel>Date of birth</FormLabel>
                 <FormControl>
                   <Input type="date" disabled={submitting} {...field} />
                 </FormControl>
@@ -130,7 +130,7 @@ export function EditProfileForm({
             name="employer"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Employer (optional)</FormLabel>
+                <FormLabel>Employer</FormLabel>
                 <FormControl>
                   <Input disabled={submitting} {...field} />
                 </FormControl>

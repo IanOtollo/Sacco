@@ -65,6 +65,7 @@ function LoansTable({ status }: { status?: string }) {
           <TableRow className="[&>th]:bg-muted/50">
             <TableHead>Loan</TableHead>
             <TableHead>Applicant</TableHead>
+            <TableHead>Referred by</TableHead>
             <TableHead>Product</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead>Guarantors</TableHead>
@@ -93,6 +94,18 @@ function LoansTable({ status }: { status?: string }) {
                     <VerifiedBadge committeeRole={loan.committeeRole} />
                   )}
                 </span>
+              </TableCell>
+              <TableCell>
+                {loan.referrerName ? (
+                  <span className="flex flex-col">
+                    <span>{loan.referrerName}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {loan.referrerPhone}
+                    </span>
+                  </span>
+                ) : (
+                  "—"
+                )}
               </TableCell>
               <TableCell>
                 {loan.nonMemberLoanCategory === "emergency"
