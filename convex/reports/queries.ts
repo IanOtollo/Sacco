@@ -48,7 +48,7 @@ export const getAdminDashboard = query({
     await requireAdmin(ctx);
 
     // Transactions: only the trailing 12 months (all the charts use) plus the
-    // 10 newest — never the whole ledger. Schedule: only installments that
+    // 10 newest â€” never the whole ledger. Schedule: only installments that
     // aren't settled, via the status index, instead of every installment ever.
     const yearAgo = new Date();
     yearAgo.setMonth(yearAgo.getMonth() - 12);

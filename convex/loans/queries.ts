@@ -32,10 +32,10 @@ async function enrichLoans(ctx: QueryCtx, loans: Doc<"loans">[]) {
         ...loan,
         referrerName: referrer ? `${referrer.firstName} ${referrer.lastName}` : null,
         referrerPhone: referrer?.phoneNumber ?? null,
-        memberName: member ? `${member.firstName} ${member.lastName}` : "—",
+        memberName: member ? `${member.firstName} ${member.lastName}` : "â€”",
         isNonMember: member?.isNonMember ?? false,
         committeeRole: member?.committeeRole,
-        productName: product?.name ?? "—",
+        productName: product?.name ?? "â€”",
         guarantorsAccepted: guarantors.filter((g) => g.status === "accepted").length,
         guarantorsTotal: guarantors.length,
       };

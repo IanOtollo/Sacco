@@ -41,7 +41,7 @@ export function MembersPageClient() {
   const convex = useConvex();
   const totalMembers = useQuery(api.members.queries.countAll);
 
-  // Export fetches the full matching roster on demand — the grid itself only
+  // Export fetches the full matching roster on demand â€” the grid itself only
   // holds the pages loaded so far.
   async function handleExport() {
     setExporting(true);

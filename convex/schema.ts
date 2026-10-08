@@ -548,7 +548,7 @@ export default defineSchema({
 
   // ─── NOTIFICATIONS ────────────────────────────────
   // SACCO-owned funds are distinct from individual member accounts.
-  // Running totals of member balances by account type � see accounts/pools.ts.
+  // Running totals of member balances by account type — see accounts/pools.ts.
   poolTotals: defineTable({
     key: v.string(),
     savings: v.number(),

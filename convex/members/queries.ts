@@ -26,7 +26,7 @@ async function withBalances(ctx: QueryCtx, members: Doc<"members">[]) {
   );
 }
 
-// Index-backed text search (name, member no., phone, ID — prefix matching on
+// Index-backed text search (name, member no., phone, ID â€” prefix matching on
 // each word). Reads only matching rows, never the whole members table.
 function searchMembers(ctx: QueryCtx, term: string, status?: MemberStatus) {
   return ctx.db.query("members").withSearchIndex("search_members", (q) => {
@@ -65,7 +65,7 @@ export const list = query({
         : await ctx.db.query("members").collect();
 
     // Non-member loan borrowers are lightweight records for loan tracking
-    // only — they never show up in the Sacco's actual membership roster.
+    // only â€” they never show up in the Sacco's actual membership roster.
     members = members.filter((m) => !m.isNonMember);
 
     if (args.joinedStart) {
@@ -125,7 +125,7 @@ export const listPage = query({
   },
 });
 
-// Roster size for the header badge — returns just a number.
+// Roster size for the header badge â€” returns just a number.
 export const countAll = query({
   args: {},
   handler: async (ctx) => {
