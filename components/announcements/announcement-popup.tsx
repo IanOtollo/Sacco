@@ -43,14 +43,13 @@ function writeSeen(userId: string, ids: string[]) {
 export function AnnouncementPopup() {
   const user = useQuery(api.users.getCurrentUser);
   const announcements = useQuery(api.announcements.queries.listForMe);
-  const [seen, setSeen] = useState<string[] | null>(null);
+  const [dismissed, setDismissed] = useState<string[]>([]);
 
   const userId = user?._id;
-  useEffect(() => {
-    if (userId) setSeen(readSeen(userId));
-  }, [userId]);
-
-  if (!userId || !announcements || seen === null) return null;
+  // Nothing renders until the queries resolve on the client, so reading
+  // localStorage here can't cause a hydration mismatch.
+  if (!userId || !announcements) return null;
+  const seen = [...readSeen(userId), ...dismissed];
 
   // Only announcements published after the popup feature shipped, oldest
   // unseen first so nothing gets skipped.
@@ -66,9 +65,8 @@ export function AnnouncementPopup() {
   if (!current) return null;
 
   function dismiss() {
-    const next = [...seen!, current._id];
-    setSeen(next);
-    writeSeen(userId!, next);
+    setDismissed((prev) => [...prev, current._id]);
+    writeSeen(userId!, [...seen, current._id]);
   }
 
   return (
